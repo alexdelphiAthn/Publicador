@@ -4,11 +4,11 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
-  System.Classes, Vcl.Graphics, System.Masks, sevenzip,
+  System.Classes, Vcl.Graphics, System.Masks, ShellAPI,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, clGZip, clTcpClient,
   clSFtp, sevenzip, System.IniFiles, Vcl.ComCtrls, JvgPage,
   System.IOUtils, System.StrUtils, System.DateUtils, System.Net.HttpClient,
-  System.Net.HttpClientComponent, System.JSON;
+  System.Net.HttpClientComponent, System.JSON, JvDialogs;
 
 type
   TfrmPublish = class(TForm)
@@ -62,6 +62,9 @@ type
     chkSendToVirusTotal: TCheckBox;
     btnCompile: TButton;
     btnGetDate: TButton;
+    btnVirusTotal: TButton;
+    dlgOpenPoject: TJvOpenDialog;
+    chkVersionarVariable: TCheckBox;
     procedure btnCheckClick(Sender: TObject);
     procedure btnComprimirClick(Sender: TObject);
     procedure btn3Click(Sender: TObject);
@@ -74,12 +77,16 @@ type
     procedure btnAddExtClick(Sender: TObject);
     procedure btnDeleteExtClick(Sender: TObject);
     procedure btnCompileClick(Sender: TObject);
+    procedure btnVirusTotalClick(Sender: TObject);
+    procedure btnGetDateClick(Sender: TObject);
+    procedure btnSelectProjectClick(Sender: TObject);
   private
     //FFileExtensions: TArray<string>;
     sOrigen, sDestino, sPassword, sServer, sServerPort,
     sFolderDest, sUserFtp, sPassFtp, sVersion, sProjFile, sGlobFile:string;
     sVirusTotalAPI : string;
     aFiles:TStringList;
+    procedure LogMessage(const Msg: string);
     procedure RecorrerCarpetasConTDirectory(const CarpetaRaiz: string);
     function ExtraerDLLDeRecurso: string;
     procedure MakeDll;
@@ -93,9 +100,13 @@ type
                                  NewVersion: string): Boolean;
     function CompileProject: Boolean;
     function GetDelphiLibPath: string;
-    function ExecuteCommand(const Command: string): Boolean;
+    function ExecuteCommand2(const CommandLine, DirIni: string): Boolean;
+    function ExecuteCommand(const Command,
+                            Parameters,
+                            DirIni: string): Boolean;
     function SendToVirusTotal(FilePath: string): Boolean;
     function GetAnalysisResult(const AnalysisID: string): string;
+    procedure EnviarVirusTotal;
   public
     { Public declarations }
   end;
@@ -360,6 +371,26 @@ begin
   end;
 end;
 
+procedure TfrmPublish.btnGetDateClick(Sender: TObject);
+begin
+  if (Length(edtVersion.Text) >= 3)  then
+  begin
+    edtVersion.Text := Copy(edtVersion.Text , 1, 3);
+    edtVersion.Text := edtVersion.Text + '.' + FormatDateTime('yyyymmddhhnn', Now);
+  end;
+end;
+
+procedure TfrmPublish.btnSelectProjectClick(Sender: TObject);
+begin
+  if dlgOpenPoject.Execute() then
+    edtProjectPath.Text := dlgOpenPoject.FileName;
+end;
+
+procedure TfrmPublish.btnVirusTotalClick(Sender: TObject);
+begin
+  EnviarVirusTotal;
+end;
+
 procedure TfrmPublish.MakeDll;
 var
   DLLPath: string;
@@ -422,6 +453,7 @@ begin
   sFolderDest  := leCadIni('sFTP', 'FolderDest', '/');
   sVersion     := leCadIni('Compilation', 'Version', '109');
   sProjFile    := leCadINI('Compilation', 'ProjectFile', 'c:\MyProject');
+  sVirusTotalAPI := leCadINI('Other', 'APIVirusTotal', '000000000000000000');
    //Leer extensiones del INI (guardadas como string separado por comas)
   extensiones := leCadIni('Files', 'Extensions', '*.exe,*.dll,*.txt');
    //Cargar extensiones en el ListBox
@@ -442,6 +474,7 @@ begin
   edtVersion.Text             := sVersion;
   edtProjectPath.Text         := sProjFile;
   edtLibVarGlobPath.Text      := sGlobFile;
+  edtVirusTotalAPIKey.Text    := sVirusTotalAPI;
 end;
 
 procedure TfrmPublish.grabarIni;
@@ -460,6 +493,7 @@ begin
   sVersion      := edtVersion.Text;
   sProjFile     := edtProjectPath.Text;
   sGlobFile     := edtLibVarGlobPath.Text;
+  sVirusTotalAPI := edtVirusTotalApiKey.Text;
   // Convertir lista de extensiones a string separado por comas
   extensiones := '';
   for i := 0 to lstExtensiones.Items.Count - 1 do
@@ -481,6 +515,7 @@ begin
   esCadINI('Compilation', 'Version',        sVersion);
   esCadINI('Compilation', 'ProjectFile',    sProjFile);
   esCadINI('Compilation', 'LibGlobFile',    sGlobFile);
+  esCadINI('Other', 'APIVirusTotal', sVirusTotalAPI);
 end;
 
 //FUNCIONES Y PROC COMPILACION
@@ -572,13 +607,14 @@ end;
 
 function TfrmPublish.CompileProject: Boolean;
 var
-  Command: string;
+  Command, Parameters: WideString;
   ProjectDir: string;
   ProjectName: string;
   DelphiBin: string;
-  LibPaths: string;
+  OriginalDir: string;
+  Paths_I:string;
   function GetDelphiBinPath: string;
-  begin
+    begin
      Result := 'c:\program files (x86)\embarcadero\studio\20.0\bin'
   end;
 begin
@@ -587,114 +623,194 @@ begin
   ProjectDir := ExtractFilePath(edtProjectPath.Text);
   ProjectName := ExtractFileName(edtProjectPath.Text);
   DelphiBin := GetDelphiBinPath;
-  LibPaths := GetDelphiLibPath;
 
-  // Comando de compilación según la versión seleccionada
-  Command := '"' + DelphiBin + '\dcc32.exe" ' +
-             '-$D0 -$L- -$Y- --no-config -M -Q -TX.exe ' +
-             '-AGenerics.Collections=System.Generics.Collections;' +
-                'Generics.Defaults=System.Generics.Defaults;' +
-                'WinTypes=Winapi.Windows;WinProcs=Winapi.Windows;' +
-                'DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE ' +
-             '-DRELEASE ' +
-             '-E.\Win32\Release ' +  //carpeta donde va a dejar el ejecutable
-             '-I' + LibPaths + ' ' +
-             '-U' + LibPaths + ' ' +
-             '-R' + LibPaths + ' ' +
-             '-LE"C:\Users\Public\Documents\Embarcadero\Studio\20.0\Bpl" ' +
-             '-LN"C:\Users\Public\Documents\Embarcadero\Studio\20.0\Dcp" ' +
-             '-NU.\Win32\Release ' +  //carpeta donde deja los dcus
-             '-NS"Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;'+
-                 'Soap.Win;Xml.Win;Bde;System;Xml;Data;Datasnap;' +
-                 'Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell" ' +
-             '-NBC:\Users\Public\Documents\Embarcadero\Studio\20.0\Dcp ' +
-             '-NHC:\Users\Public\Documents\Embarcadero\Studio\20.0\hpp\Win32 ' +
-             '-NO.\Win32\Release ' +
-             '"' + ProjectName + '"';
+  // Guardar directorio original
+//  OriginalDir := GetCurrentDir;
 
   m1.Lines.Add('=== CONFIGURACIÓN DE COMPILACIÓN ===');
-  m1.Lines.Add('Versión Delphi: 10.3 Rio');
+  m1.Lines.Add('Versión Delphi: 10.3' );
   m1.Lines.Add('Compilador: ' + DelphiBin + '\dcc32.exe');
   m1.Lines.Add('Directorio de trabajo: ' + ProjectDir);
+  m1.Lines.Add('Archivo proyecto: ' + ProjectName);
   m1.Lines.Add('');
-  m1.Lines.Add('Ejecutando comando...');
 
-  // Cambiar al directorio del proyecto
-  SetCurrentDir(ProjectDir);
+//  m1.Lines.Add('Posicionado en directorio: ' + GetCurrentDir);
 
-  Result := ExecuteCommand(Command);
-end;
+  Paths_I := '"c:\program files (x86)\embarcadero\studio\20.0\lib\Win32\release"';
+  Paths_I := Paths_I + ';C:\Users\Alejansro\Documents\Embarcadero\Studio\20.0\Imports';
+  Paths_I := Paths_I + ';"c:\program files (x86)\embarcadero\studio\20.0\Imports"';
+  Paths_I := Paths_I + ';C:\Users\Public\Documents\Embarcadero\Studio\20.0\Dcp';
+  Paths_I := Paths_I + ';"c:\program files (x86)\embarcadero\studio\20.0\include"';
+  Paths_I := Paths_I + ';"C:\Program Files (x86)\Devart\UniDAC for RAD Studio 10.3\Bin\Win32"';
+  Paths_I := Paths_I + ';"C:\Program Files (x86)\Devart\UniDAC for RAD Studio 10.3\Lib\Win32"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\DevExpressVCL20.2.6\Library\RS26"';
+  Paths_I := Paths_I + ';"c:\DISCO DURO\jedi"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\jedi\jcl\lib\d26\win32"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\jedi\jcl\source\include"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\sqlbuilder\src"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\sqlbuilder\dependencies\gaSQLParser\src"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\SynEdit\Source"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\crypt\DCPCrypt-master\Ciphers"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\crypt\DCPCrypt-master"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\jedi\jvcl\lib\D26\win32"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\FastMM4"';
+  Paths_I := Paths_I + ';"C:\Program Files (x86)\FastReport 6 VCL Enterprise\LibD26"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\jcl\jcl\lib\d26\win32"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\jcl\jcl\source\include"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\jvcl\jvcl\lib\D26\win32"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\jvcl\jvcl\common"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\jvcl\jvcl\Resources"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\clever9\SourceFiles\ssh"';
+  Paths_I := Paths_I + ';"C:\DISCO DURO\clever9\SourceFiles\common"';
 
-function TfrmPublish.ExecuteCommand(const Command: string): Boolean;
-var
-  SI: TStartupInfo;
-  PI: TProcessInformation;
-  Handle: THandle;
-  ExitCode: DWORD;
-  TempFile: string;
-  Output: TStringList;
-begin
-  Result := False;
-
-  // Crear archivo temporal para capturar salida
-  TempFile := TPath.GetTempFileName;
-
-  ZeroMemory(@SI, SizeOf(SI));
-  SI.cb := SizeOf(SI);
-  SI.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
-  SI.wShowWindow := SW_HIDE;
-
-  // Redirigir salida a archivo temporal
-  Handle := CreateFile(PChar(TempFile), GENERIC_WRITE, FILE_SHARE_READ, nil,
-                       CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-  SI.hStdOutput := Handle;
-  SI.hStdError := Handle;
+  // Comando de compilación exacto basado en tu ejemplo
+// Comando de compilación dividido en partes
+  Command := '"' + DelphiBin + '\dcc32.exe"';
+  Logmessage('Comando: '+ Command);
+  Parameters := Parameters + ' -$D0 -$L- -$Y- --no-config -B -Q -TX.exe';
+  Parameters := Parameters + ' -AGenerics.Collections=System.Generics.Collections;Generics.Defaults=System.Generics.Defaults;WinTypes=Winapi.Windows;WinProcs=Winapi.Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE';
+  Parameters := Parameters + ' -DRELEASE';
+  Parameters := Parameters + ' -E.\Win32\Release';
+  Parameters := Parameters + ' -I' + Paths_I;
+  Parameters := Parameters + ' -LEC:\Users\Public\Documents\Embarcadero\Studio\20.0\Bpl';
+  Parameters := Parameters + ' -LNC:\Users\Public\Documents\Embarcadero\Studio\20.0\Dcp';
+  Parameters := Parameters + ' -NU.\Win32\Release';
+  Parameters := Parameters + ' -NSWinapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;';
+  Parameters := Parameters + ' -O' + Paths_I;
+  Parameters := Parameters + ' -R' + Paths_I;
+  Parameters := Parameters + ' -U' + Paths_I;
+  Parameters := Parameters + ' -NBC:\Users\Public\Documents\Embarcadero\Studio\20.0\Dcp';
+  Parameters := Parameters + ' -NHC:\Users\Public\Documents\Embarcadero\Studio\20.0\hpp\Win32';
+  Parameters := Parameters + ' -NO.\Win32\Release';
+  Parameters := Parameters + ' "' + ProjectName + '"';
+  LogMessage('Parámetros: ' + Parameters);
+  m1.Lines.Add('Ejecutando compilación...');
 
   try
-    if CreateProcess(nil, PChar('cmd.exe /c ' + Command + ' > "' + TempFile + '" 2>&1'),
-                     nil, nil, True, 0, nil, nil, SI, PI) then
-    begin
-      try
-        // Esperar que termine el proceso
-        WaitForSingleObject(PI.hProcess, INFINITE);
-
-        // Obtener código de salida
-        GetExitCodeProcess(PI.hProcess, ExitCode);
-        Result := ExitCode = 0;
-
-        m1.Lines.Add('Código de salida: ' + IntToStr(ExitCode));
-
-      finally
-        CloseHandle(PI.hProcess);
-        CloseHandle(PI.hThread);
-      end;
-    end
-    else
-    begin
-      m1.Lines.Add('ERROR: No se pudo ejecutar el comando');
-    end;
-
+    Result := ExecuteCommand2(Command+ ' ' + Parameters, ProjectDir);
   finally
-    CloseHandle(Handle);
-
-    // Leer y mostrar la salida
-    if FileExists(TempFile) then
-    begin
-      Output := TStringList.Create;
-      try
-        Output.LoadFromFile(TempFile);
-        if Output.Count > 0 then
-        begin
-          m1.Lines.Add('--- SALIDA DEL COMPILADOR ---');
-          m1.Lines.Add(Output.Text);
-          m1.Lines.Add('--- FIN SALIDA ---');
-        end;
-      finally
-        Output.Free;
-      end;
-      DeleteFile(TempFile);
-    end;
+    // Restaurar directorio original
+//    SetCurrentDir(OriginalDir);
+//    m1.Lines.Add('Directorio restaurado a: ' + GetCurrentDir);
   end;
+end;
+
+function TfrmPublish.ExecuteCommand2(const CommandLine, DirIni: string): Boolean;
+var
+  StartupInfo: TStartupInfo;
+  ProcessInfo: TProcessInformation;
+  SecurityAttr: TSecurityAttributes;
+  ReadPipe, WritePipe: THandle;
+  Buffer: array[0..4095] of Byte;
+  BytesRead: DWORD;
+  TempBytes: TBytes;
+  Output: string;
+begin
+  Result := False;
+  Output := '';
+
+  // Seguridad para heredar handles
+  SecurityAttr.nLength := SizeOf(SecurityAttr);
+  SecurityAttr.bInheritHandle := True;
+  SecurityAttr.lpSecurityDescriptor := nil;
+
+  // Crear pipe
+  if not CreatePipe(ReadPipe, WritePipe, @SecurityAttr, 0) then
+    Exit;
+
+  // Configurar StartupInfo
+  ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
+  StartupInfo.cb := SizeOf(StartupInfo);
+  StartupInfo.hStdOutput := WritePipe;
+  StartupInfo.hStdError := WritePipe; // Captura también stderr
+  StartupInfo.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
+  StartupInfo.wShowWindow := SW_HIDE;
+
+  // Crear proceso
+  if CreateProcess(nil, PChar(CommandLine), nil, nil, True, 0, nil, PChar(DirIni),
+    StartupInfo, ProcessInfo) then
+  begin
+    CloseHandle(WritePipe); // Cerramos escritura
+
+    // Leer salida
+    repeat
+      Application.ProcessMessages;
+      if PeekNamedPipe(ReadPipe, nil, 0, nil, @BytesRead, nil) and (BytesRead > 0) then
+      begin
+        ZeroMemory(@Buffer, SizeOf(Buffer));
+        ReadFile(ReadPipe, Buffer, SizeOf(Buffer), BytesRead, nil);
+        SetLength(TempBytes, BytesRead);
+        Move(Buffer[0], TempBytes[0], BytesRead);
+        Output := Output + TEncoding.Default.GetString(TempBytes);
+      end;
+    until WaitForSingleObject(ProcessInfo.hProcess, 50) <> WAIT_TIMEOUT;
+
+    // Leer cualquier resto de salida
+    repeat
+      ReadFile(ReadPipe, Buffer, SizeOf(Buffer), BytesRead, nil);
+      if BytesRead > 0 then
+      begin
+        SetLength(TempBytes, BytesRead);
+        Move(Buffer[0], TempBytes[0], BytesRead);
+        Output := Output + TEncoding.Default.GetString(TempBytes);
+      end;
+    until BytesRead = 0;
+
+    // Cerrar handles
+    CloseHandle(ReadPipe);
+    CloseHandle(ProcessInfo.hProcess);
+    CloseHandle(ProcessInfo.hThread);
+
+    LogMessage('Salida del proceso:' + sLineBreak + Output);
+    Result := True;
+  end
+  else
+  begin
+    LogMessage('Error al ejecutar: ' + IntToStr(GetLastError));
+    CloseHandle(ReadPipe);
+    CloseHandle(WritePipe);
+  end;
+end;
+
+
+
+
+// Función alternativa más simple usando ShellExecute (sin capturar salida)
+function TfrmPublish.ExecuteCommand(const Command, Parameters, DirIni: string): Boolean;
+var
+  SEInfo: TShellExecuteInfo;
+  ExitCode: DWORD;
+  ExecuteFile, StartIn: string;
+begin
+  ExecuteFile := Command;
+  StartIn := DirIni;
+
+  FillChar(SEInfo, SizeOf(SEInfo), 0);
+  SEInfo.cbSize := SizeOf(TShellExecuteInfo);
+  SEInfo.fMask := SEE_MASK_NOCLOSEPROCESS;
+  SEInfo.Wnd := Application.Handle;
+  SEInfo.lpVerb := 'open';
+  SEInfo.lpFile := PChar(ExecuteFile);
+  SEInfo.lpParameters := PChar(Parameters);
+  SEInfo.lpDirectory := PChar(StartIn);
+  //SEInfo.nShow := SW_SHOWNORMAL;
+  SEInfo.nShow := SW_HIDE;
+  if ShellExecuteEx(@SEInfo) then
+    repeat
+      Application.ProcessMessages;
+      GetExitCodeProcess(SEInfo.hProcess, ExitCode);
+      Result := True;
+    until (ExitCode <> STILL_ACTIVE)
+  else
+  begin
+    LogMessage('Error: ' + IntToStr(GetLastError));
+    Result := False;
+  end;
+end;
+
+procedure TfrmPublish.LogMessage(const Msg: string);
+begin
+  m1.Lines.Add('[' + TimeToStr(Now) + '] ' + Msg);
 end;
 
 procedure TfrmPublish.btnCompileClick(Sender: TObject);
@@ -708,25 +824,30 @@ begin
     m1.Lines.Add('Seleccione un archivo de proyecto válido (.dpr)');
     Exit;
   end;
-  if not FileExists(edtLibVarGlobPath.Text) then
-  begin
-    m1.Lines.Add('Seleccione el archivo inLibVarGlob.pas');
-    Exit;
-  end;
+  if chkVersionarVariable.Checked = False then
+    if not FileExists(edtLibVarGlobPath.Text) then
+    begin
+      m1.Lines.Add('Seleccione el archivo inLibVarGlob.pas');
+      Exit;
+    end;
   btnCompile.Enabled := False;
   try
     NewVersion := edtVersion.Text;
     m1.Lines.Add('=== INICIANDO COMPILACIÓN ===');
-    m1.Lines.Add('Nueva versión: ' + NewVersion);
     // Paso 1: Actualizar versión en el archivo
 //    ProgressBar1.Position := 25;
-    m1.Lines.Add('Actualizando versión en ' + ExtractFileName(edtLibVarGlobPath.Text));
-    if not UpdateVersionInFile(edtLibVarGlobPath.Text, NewVersion) then
-    begin
-      m1.Lines.Add('ERROR: No se pudo actualizar la versión');
-      Exit;
-    end;
-    m1.Lines.Add('Versión actualizada correctamente');
+    if chkVersionarVariable.Checked = False then
+      if not UpdateVersionInFile(edtLibVarGlobPath.Text, NewVersion) then
+      begin
+        m1.Lines.Add('ERROR: No se pudo actualizar la versión');
+        Exit;
+      end
+      else
+      begin
+        m1.Lines.Add('Actualizando versión en ' + ExtractFileName(edtLibVarGlobPath.Text));
+        m1.Lines.Add('Versión actualizada correctamente');
+        m1.Lines.Add('Nueva versión: ' + NewVersion);
+      end;
     // Paso 2: Compilar proyecto
 //    ProgressBar1.Position := 50;
     m1.Lines.Add('Iniciando compilación del proyecto...');
@@ -736,29 +857,7 @@ begin
       // Paso 3: Enviar a VirusTotal si está habilitado
       if chkSendToVirusTotal.Checked then
       begin
-//        ProgressBar1.Position := 85;
-        m1.Lines.Add('Enviando a VirusTotal...');
-        if Trim(edtVirusTotalAPIKey.Text) = '' then
-        begin
-          m1.Lines.Add('ADVERTENCIA: No se proporcionó API Key de VirusTotal');
-        end
-        else
-        begin
-          ExeFile := ChangeFileExt(edtProjectPath.Text, '.exe');
-          OutputExe := ExtractFilePath(edtProjectPath.Text) +
-                                    'Win32\Release\' + ExtractFileName(ExeFile);
-          if FileExists(OutputExe) then
-          begin
-            if SendToVirusTotal(OutputExe) then
-              m1.Lines.Add('Archivo enviado a VirusTotal correctamente')
-            else
-              m1.Lines.Add('ERROR: Fallo al enviar a VirusTotal');
-          end
-          else
-          begin
-            m1.Lines.Add('ERROR: No se encontró el ejecutable compilado: ' + OutputExe);
-          end;
-        end;
+        EnviarVirusTotal;
       end;
 //      ProgressBar1.Position := 100;
       m1.Lines.Add('Proceso completado exitosamente!' + #13#10 +
@@ -772,6 +871,35 @@ begin
   finally
 //    ProgressBar1.Visible := False;
     btnCompile.Enabled := True;
+  end;
+end;
+
+procedure TfrmPublish.EnviarVirusTotal;
+var
+  ExeFile, OutputExe:string;
+begin
+  //        ProgressBar1.Position := 85;
+  m1.Lines.Add('Enviando a VirusTotal...');
+  if Trim(edtVirusTotalAPIKey.Text) = '' then
+  begin
+    m1.Lines.Add('ADVERTENCIA: No se proporcionó API Key de VirusTotal');
+  end
+  else
+  begin
+    ExeFile := ChangeFileExt(edtProjectPath.Text, '.exe');
+    OutputExe := ExtractFilePath(edtProjectPath.Text) +
+                              'Win32\Release\' + ExtractFileName(ExeFile);
+    if FileExists(OutputExe) then
+    begin
+      if SendToVirusTotal(OutputExe) then
+        m1.Lines.Add('Archivo enviado a VirusTotal correctamente')
+      else
+        m1.Lines.Add('ERROR: Fallo al enviar a VirusTotal');
+    end
+    else
+    begin
+      m1.Lines.Add('ERROR: No se encontró el ejecutable compilado: ' + OutputExe);
+    end;
   end;
 end;
 

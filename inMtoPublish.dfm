@@ -69,8 +69,10 @@ object frmPublish: TfrmPublish
     Options = [ftoAutoFontDirection, ftoExcludeGlyphs]
     object tsFicheros: TTabSheet
       Caption = 'Ficheros C'#243'digo Fuente'
-      ExplicitLeft = 8
-      ExplicitTop = 30
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object lblOrigen: TLabel
         Left = 16
         Top = 18
@@ -153,8 +155,6 @@ object frmPublish: TfrmPublish
     object tsPatrones: TTabSheet
       Caption = 'Patrones a incluir de c'#243'digo Fuente'
       ImageIndex = 2
-      ExplicitWidth = 697
-      ExplicitHeight = 321
       object lblExtensiones: TLabel
         Left = 149
         Top = 8
@@ -265,6 +265,7 @@ object frmPublish: TfrmPublish
           Height = 25
           Caption = 'Seleccionar'
           TabOrder = 2
+          OnClick = btnSelectProjectClick
         end
         object edtLibVarGlobPath: TEdit
           Left = 152
@@ -324,16 +325,40 @@ object frmPublish: TfrmPublish
           Font.Style = [fsBold]
           ParentFont = False
           TabOrder = 8
+          OnClick = btnGetDateClick
+        end
+        object btnVirusTotal: TButton
+          Left = 622
+          Top = 153
+          Width = 179
+          Height = 25
+          Caption = 'ENVIAR A VIRUSTOTAL'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 9
+          OnClick = btnVirusTotalClick
+        end
+        object chkVersionarVariable: TCheckBox
+          Left = 678
+          Top = 88
+          Width = 329
+          Height = 17
+          Caption = 'No Versionar Vble.'
+          TabOrder = 10
         end
       end
     end
     object tsFTP: TTabSheet
       Caption = 'Conexi'#243'n sFTP'
       ImageIndex = 1
-      ExplicitLeft = -156
-      ExplicitTop = 16
-      ExplicitWidth = 625
-      ExplicitHeight = 246
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object lblPassword1: TLabel
         Left = 13
         Top = 34
@@ -438,5 +463,13 @@ object frmPublish: TfrmPublish
     OnVerifyServer = sFtpClientVerifyServer
     Left = 120
     Top = 560
+  end
+  object dlgOpenPoject: TJvOpenDialog
+    Filter = 'Poyecto Delphi dpr (*.dpr)|*.dpr'
+    Options = [ofReadOnly, ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
+    Height = 0
+    Width = 0
+    Left = 448
+    Top = 312
   end
 end
