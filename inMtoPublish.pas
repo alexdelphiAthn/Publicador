@@ -4,7 +4,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
-  System.Classes, Vcl.Graphics, System.Masks,
+  System.Classes, Vcl.Graphics, System.Masks, sevenzip,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, clGZip, clTcpClient,
   clSFtp, sevenzip, System.IniFiles, Vcl.ComCtrls, JvgPage,
   System.IOUtils, System.StrUtils, System.DateUtils, System.Net.HttpClient,
@@ -78,7 +78,7 @@ type
     //FFileExtensions: TArray<string>;
     sOrigen, sDestino, sPassword, sServer, sServerPort,
     sFolderDest, sUserFtp, sPassFtp, sVersion, sProjFile, sGlobFile:string;
-
+    sVirusTotalAPI : string;
     aFiles:TStringList;
     procedure RecorrerCarpetasConTDirectory(const CarpetaRaiz: string);
     function ExtraerDLLDeRecurso: string;
@@ -420,7 +420,8 @@ begin
   sUserFtp     := leCadIni('sFTP', 'User', 'user_ftp');
   sPassFtp     := leCadIni('sFTP', 'FtpPasswd', 'passftp');
   sFolderDest  := leCadIni('sFTP', 'FolderDest', '/');
-
+  sVersion     := leCadIni('Compilation', 'Version', '109');
+  sProjFile    := leCadINI('Compilation', 'ProjectFile', 'c:\MyProject');
    //Leer extensiones del INI (guardadas como string separado por comas)
   extensiones := leCadIni('Files', 'Extensions', '*.exe,*.dll,*.txt');
    //Cargar extensiones en el ListBox
@@ -430,14 +431,17 @@ end;
 
 procedure TfrmPublish.InitControls;
 begin
-  edtOrigen.Text        := sOrigen;
-  edtDestino.Text       := sDestino;
-  edtPassword.Text      := sPassword;
-  edtServer.Text        := sServer;
-  edtPuerto.Text        := sServerPort;
-  edtUsuario.Text       := sUserFtp;
-  edtPassFTP.Text       := sPassFtp;
-  edtCarpetaRemota.Text := sFolderDest;
+  edtOrigen.Text              := sOrigen;
+  edtDestino.Text             := sDestino;
+  edtPassword.Text            := sPassword;
+  edtServer.Text              := sServer;
+  edtPuerto.Text              := sServerPort;
+  edtUsuario.Text             := sUserFtp;
+  edtPassFTP.Text             := sPassFtp;
+  edtCarpetaRemota.Text       := sFolderDest;
+  edtVersion.Text             := sVersion;
+  edtProjectPath.Text         := sProjFile;
+  edtLibVarGlobPath.Text      := sGlobFile;
 end;
 
 procedure TfrmPublish.grabarIni;
@@ -453,6 +457,9 @@ begin
   sUserFtp      := edtUsuario.Text;
   sPassFtp      := edtPassFTP.Text;
   sFolderDest   := edtCarpetaRemota.Text;
+  sVersion      := edtVersion.Text;
+  sProjFile     := edtProjectPath.Text;
+  sGlobFile     := edtLibVarGlobPath.Text;
   // Convertir lista de extensiones a string separado por comas
   extensiones := '';
   for i := 0 to lstExtensiones.Items.Count - 1 do
@@ -462,18 +469,18 @@ begin
     extensiones := extensiones + lstExtensiones.Items[i];
   end;
   // Grabar en INI
-  esCadIni('Basic', 'DirSource',      sOrigen);
-  esCadIni('Basic', 'DirDestination', sDestino);
-  esCadIni('Basic', 'PasswordZip',    sPassword);
-  esCadIni('sFTP',  'Server',         sServer);
-  esCadIni('sFTP',  'Port',           sServerPort);
-  esCadIni('sFTP',  'User',           sUserFtp);
-  esCadIni('sFTP',  'FtpPasswd',      sPassFtp);
-  esCadIni('sFTP',  'FolderDest',     sFolderDest);
-  esCadIni('Files', 'Extensions',     extensiones);
-  esCadINI('Compilation', 'Version', sVersion);
-  esCadINI('Compilation', 'ProjectFile', sProjFile);
-  esCadINI('Compilation', 'LibGlobFile', sGlobFile);
+  esCadIni('Basic',       'DirSource',      sOrigen);
+  esCadIni('Basic',       'DirDestination', sDestino);
+  esCadIni('Basic',       'PasswordZip',    sPassword);
+  esCadIni('sFTP',        'Server',         sServer);
+  esCadIni('sFTP',        'Port',           sServerPort);
+  esCadIni('sFTP',        'User',           sUserFtp);
+  esCadIni('sFTP',        'FtpPasswd',      sPassFtp);
+  esCadIni('sFTP',        'FolderDest',     sFolderDest);
+  esCadIni('Files',       'Extensions',     extensiones);
+  esCadINI('Compilation', 'Version',        sVersion);
+  esCadINI('Compilation', 'ProjectFile',    sProjFile);
+  esCadINI('Compilation', 'LibGlobFile',    sGlobFile);
 end;
 
 //FUNCIONES Y PROC COMPILACION
@@ -878,6 +885,7 @@ var
   HTTPClient: THTTPClient;
   Response: IHTTPResponse;
   JSONResponse, DataObj, AttributesObj, StatsJSON: TJSONObject;
+  Value: TJSONValue;
   Malicious, Suspicious, Harmless, Undetected: Integer;
 begin
   Result := '';
@@ -901,7 +909,6 @@ begin
                 Suspicious := 0;
                 Harmless := 0;
                 Undetected := 0;
-                var Value: TJSONValue;
                 if StatsJSON.TryGetValue('malicious', Value) then
                   Malicious := Value.AsType<Integer>;
                 if StatsJSON.TryGetValue('suspicious', Value) then
@@ -910,7 +917,6 @@ begin
                   Harmless := Value.AsType<Integer>;
                 if StatsJSON.TryGetValue('undetected', Value) then
                   Undetected := Value.AsType<Integer>;
-
                 Result := Format('Malicioso: %d, Sospechoso: %d, Inofensivo: %d, No detectado: %d',
                                 [Malicious, Suspicious, Harmless, Undetected]);
 
@@ -939,6 +945,5 @@ begin
     HTTPClient.Free;
   end;
 end;
-
 
 end.
