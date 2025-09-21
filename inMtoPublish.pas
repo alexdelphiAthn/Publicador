@@ -685,7 +685,7 @@ begin
   Parameters := Parameters + ' "' + ProjectName + '"';
   LogMessage('Parámetros: ' + Parameters);
   m1.Lines.Add('Ejecutando compilación...');
-
+  ForceDirectories(ProjectDir + '\Win32\Release');
   try
     Result := ExecuteCommand2(Command+ ' ' + Parameters, ProjectDir);
   finally
@@ -696,6 +696,95 @@ begin
 end;
 
 function TfrmPublish.ExecuteCommand2(const CommandLine, DirIni: string): Boolean;
+var
+  StartupInfo: TStartupInfo;
+  ProcessInfo: TProcessInformation;
+  SecurityAttr: TSecurityAttributes;
+  ReadPipe, WritePipe: THandle;
+  Buffer: array[0..4095] of Byte;
+  BytesRead: DWORD;
+  TempBytes: TBytes;
+  Output: string;
+  ExitCode: DWORD;
+begin
+  Result := False;
+  Output := '';
+  ReadPipe := INVALID_HANDLE_VALUE;
+  WritePipe := INVALID_HANDLE_VALUE;
+
+  try
+    // Configurar seguridad para heredar handles
+    SecurityAttr.nLength := SizeOf(SecurityAttr);
+    SecurityAttr.bInheritHandle := True;
+    SecurityAttr.lpSecurityDescriptor := nil;
+
+    // Crear pipe
+    if not CreatePipe(ReadPipe, WritePipe, @SecurityAttr, 0) then
+    begin
+      LogMessage('Error creando pipe: ' + IntToStr(GetLastError));
+      Exit;
+    end;
+
+    // Configurar StartupInfo
+    ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
+    StartupInfo.cb := SizeOf(StartupInfo);
+    StartupInfo.hStdOutput := WritePipe;
+    StartupInfo.hStdError := WritePipe;
+    StartupInfo.hStdInput := GetStdHandle(STD_INPUT_HANDLE);
+    StartupInfo.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
+    StartupInfo.wShowWindow := SW_HIDE;
+
+    // Crear proceso
+    if not CreateProcess(nil, PChar(CommandLine), nil, nil, True, 0, nil,
+                        PChar(DirIni), StartupInfo, ProcessInfo) then
+    begin
+      LogMessage('Error al ejecutar: ' + IntToStr(GetLastError));
+      Exit;
+    end;
+
+    try
+      // Cerrar el extremo de escritura del pipe inmediatamente
+      CloseHandle(WritePipe);
+      WritePipe := INVALID_HANDLE_VALUE;
+
+      // Leer salida hasta que el proceso termine
+      repeat
+        Application.ProcessMessages;
+
+        // Intentar leer con timeout
+        if ReadFile(ReadPipe, Buffer, SizeOf(Buffer), BytesRead, nil) and (BytesRead > 0) then
+        begin
+          SetLength(TempBytes, BytesRead);
+          Move(Buffer[0], TempBytes[0], BytesRead);
+          Output := Output + TEncoding.UTF8.GetString(TempBytes); // UTF8 es más seguro
+        end;
+
+      until WaitForSingleObject(ProcessInfo.hProcess, 100) <> WAIT_TIMEOUT;
+
+      // Verificar código de salida
+      if GetExitCodeProcess(ProcessInfo.hProcess, ExitCode) then
+      begin
+        LogMessage('Proceso terminado con código: ' + IntToStr(ExitCode));
+        Result := (ExitCode = 0); // Éxito solo si código de salida es 0
+      end;
+
+      LogMessage('Salida del proceso:' + sLineBreak + Output);
+
+    finally
+      CloseHandle(ProcessInfo.hProcess);
+      CloseHandle(ProcessInfo.hThread);
+    end;
+
+  finally
+    // Cleanup garantizado
+    if ReadPipe <> INVALID_HANDLE_VALUE then
+      CloseHandle(ReadPipe);
+    if WritePipe <> INVALID_HANDLE_VALUE then
+      CloseHandle(WritePipe);
+  end;
+end;
+
+(*function TfrmPublish.ExecuteCommand2(const CommandLine, DirIni: string): Boolean;
 var
   StartupInfo: TStartupInfo;
   ProcessInfo: TProcessInformation;
@@ -770,10 +859,7 @@ begin
     CloseHandle(ReadPipe);
     CloseHandle(WritePipe);
   end;
-end;
-
-
-
+end;*)
 
 // Función alternativa más simple usando ShellExecute (sin capturar salida)
 function TfrmPublish.ExecuteCommand(const Command, Parameters, DirIni: string): Boolean;
