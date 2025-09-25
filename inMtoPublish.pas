@@ -1014,7 +1014,7 @@ begin
       // Final del boundary
       RequestBody.WriteString(#13#10 + '--' + Boundary + '--' + #13#10);
       try
-        // Enviar archivo
+        // Enviar archivoo
         Response := HTTPClient.Post('https://www.virustotal.com/api/v3/files', RequestBody);
         if Response.StatusCode = 200 then
         begin

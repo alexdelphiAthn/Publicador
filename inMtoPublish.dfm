@@ -1,7 +1,7 @@
 object frmPublish: TfrmPublish
   Left = 0
   Top = 0
-  Caption = 'Publicaci'#243'n de Ejecutables y c'#243'digo fuente'
+  Caption = 'Publicaci'#243'n de ejecutables y c'#243'digo fuente'
   ClientHeight = 606
   ClientWidth = 900
   Color = clBtnFace
