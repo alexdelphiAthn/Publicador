@@ -10,10 +10,8 @@ object frmPublish: TfrmPublish
   Font.Height = -16
   Font.Name = 'Segoe UI'
   Font.Style = []
-  OldCreateOrder = False
   OnClose = FormClose
   OnCreate = FormCreate
-  PixelsPerInch = 96
   TextHeight = 21
   object m1: TMemo
     Left = 0
@@ -25,6 +23,8 @@ object frmPublish: TfrmPublish
       'm1')
     ScrollBars = ssVertical
     TabOrder = 0
+    ExplicitTop = 430
+    ExplicitWidth = 896
   end
   object jpcPestanas: TJvgPageControl
     Left = 0
@@ -67,12 +67,10 @@ object frmPublish: TfrmPublish
     TabSelectedStyle.Gradient.Active = False
     TabSelectedStyle.Gradient.Orientation = fgdHorizontal
     Options = [ftoAutoFontDirection, ftoExcludeGlyphs]
+    ExplicitWidth = 896
+    ExplicitHeight = 430
     object tsFicheros: TTabSheet
       Caption = 'Ficheros C'#243'digo Fuente'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object lblOrigen: TLabel
         Left = 16
         Top = 18
@@ -350,15 +348,33 @@ object frmPublish: TfrmPublish
           Caption = 'No Versionar Vble.'
           TabOrder = 10
         end
+        object btnAnalizar: TButton
+          Left = 622
+          Top = 177
+          Width = 211
+          Height = 25
+          Caption = 'ANALIZAR RESPUESTA VIRUSTOTAL'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 11
+          OnClick = btnAnalizarClick
+        end
+        object EditAnalisisID: TEdit
+          Left = 720
+          Top = 118
+          Width = 97
+          Height = 29
+          TabOrder = 12
+        end
       end
     end
     object tsFTP: TTabSheet
       Caption = 'Conexi'#243'n sFTP'
       ImageIndex = 1
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object lblPassword1: TLabel
         Left = 13
         Top = 34
@@ -443,6 +459,7 @@ object frmPublish: TfrmPublish
   end
   object clsftp3: TclSFtp
     SshAgent = 'Clever_Internet_Suite'
+    CharSet = 'utf-8'
     Left = 176
     Top = 560
   end
@@ -460,6 +477,7 @@ object frmPublish: TfrmPublish
   end
   object sFtpClient: TclSFtp
     SshAgent = 'Clever_Internet_Suite'
+    CharSet = 'utf-8'
     OnVerifyServer = sFtpClientVerifyServer
     Left = 120
     Top = 560

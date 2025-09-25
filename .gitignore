@@ -22,3 +22,4 @@ config.ini
 database.cfg
 *.key
 *.lic
+Publicador.ini

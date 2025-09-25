@@ -8,7 +8,7 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, clGZip, clTcpClient,
   clSFtp, sevenzip, System.IniFiles, Vcl.ComCtrls, JvgPage,
   System.IOUtils, System.StrUtils, System.DateUtils, System.Net.HttpClient,
-  System.Net.HttpClientComponent, System.JSON, JvDialogs;
+  System.Net.HttpClientComponent, System.JSON, JvDialogs, clTcpClientSsh;
 
 type
   TfrmPublish = class(TForm)
@@ -65,6 +65,8 @@ type
     btnVirusTotal: TButton;
     dlgOpenPoject: TJvOpenDialog;
     chkVersionarVariable: TCheckBox;
+    btnAnalizar: TButton;
+    EditAnalisisID: TEdit;
     procedure btnCheckClick(Sender: TObject);
     procedure btnComprimirClick(Sender: TObject);
     procedure btn3Click(Sender: TObject);
@@ -80,6 +82,7 @@ type
     procedure btnVirusTotalClick(Sender: TObject);
     procedure btnGetDateClick(Sender: TObject);
     procedure btnSelectProjectClick(Sender: TObject);
+    procedure btnAnalizarClick(Sender: TObject);
   private
     //FFileExtensions: TArray<string>;
     sOrigen, sDestino, sPassword, sServer, sServerPort,
@@ -149,7 +152,6 @@ begin
       Result := TempPath;
       Exit;
     end;
-
     // Extraer DLL del recurso
     ResStream := TResourceStream.Create(HInstance, 'MIDLL', RT_RCDATA);
     try
@@ -163,7 +165,6 @@ begin
     finally
       ResStream.Free;
     end;
-
   except
     on E: Exception do
     begin
@@ -172,7 +173,6 @@ begin
     end;
   end;
 end;
-
 //EVENTOS DEL FORM
 procedure TfrmPublish.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
@@ -324,6 +324,15 @@ begin
     lstExtensiones.Items.Add(edtExtension.Text);
 end;
 
+procedure TfrmPublish.btnAnalizarClick(Sender: TObject);
+begin
+                m1.Lines.Add('Resultado inicial...');
+
+                var ResultSummary := GetAnalysisResult(editAnalisisId.Text);
+                if ResultSummary <> '' then
+                  m1.Lines.Add('Resultado: ' + ResultSummary);
+end;
+
 procedure TfrmPublish.btnDeleteExtClick(Sender: TObject);
 begin
 if lstExtensiones.ItemIndex >= 0 then
@@ -460,7 +469,6 @@ begin
   lstExtensiones.Items.Clear;
   lstExtensiones.Items.CommaText := extensiones;
 end;
-
 procedure TfrmPublish.InitControls;
 begin
   edtOrigen.Text              := sOrigen;
@@ -476,7 +484,6 @@ begin
   edtLibVarGlobPath.Text      := sGlobFile;
   edtVirusTotalAPIKey.Text    := sVirusTotalAPI;
 end;
-
 procedure TfrmPublish.grabarIni;
 var
   i: Integer;
@@ -517,7 +524,6 @@ begin
   esCadINI('Compilation', 'LibGlobFile',    sGlobFile);
   esCadINI('Other', 'APIVirusTotal', sVirusTotalAPI);
 end;
-
 //FUNCIONES Y PROC COMPILACION
 function TfrmPublish.UpdateVersionInFile(const FileName,
                                          NewVersion: string): Boolean;
@@ -529,20 +535,16 @@ var
 begin
   Result := False;
   Found := False;
-
   if not FileExists(FileName) then
     Exit;
-
   FileContent := TStringList.Create;
   try
     // Leer archivo
     FileContent.LoadFromFile(FileName);
-
     // Buscar y reemplazar la línea de versión
     for i := 0 to FileContent.Count - 1 do
     begin
       Line := Trim(FileContent[i]);
-
       // Buscar línea que contenga "Fversion :="
       if (Pos('Fversion', Line) > 0) and (Pos(':=', Line) > 0) then
       begin
@@ -567,7 +569,6 @@ begin
     FileContent.Free;
   end;
 end;
-
 function TfrmPublish.GetDelphiLibPath: string;
 var
   BasePath:string;
@@ -580,7 +581,6 @@ begin
   Result := Result + ';"' + BasePath + '\Imports"';
   Result := Result + ';C:\Users\Public\Documents\Embarcadero\Studio\20.0\Dcp';
   Result := Result + ';"' + BasePath + '\include"';
-
   // Agregar paths de componentes de terceros (estos generalmente son independientes de la versión)
   Result := Result + ';"C:\Program Files (x86)\Devart\UniDAC for RAD Studio 10.3\Bin\Win32"';
   Result := Result + ';"C:\Program Files (x86)\Devart\UniDAC for RAD Studio 10.3\Lib\Win32"';
@@ -694,7 +694,6 @@ begin
 //    m1.Lines.Add('Directorio restaurado a: ' + GetCurrentDir);
   end;
 end;
-
 function TfrmPublish.ExecuteCommand2(const CommandLine, DirIni: string): Boolean;
 var
   StartupInfo: TStartupInfo;
@@ -711,20 +710,17 @@ begin
   Output := '';
   ReadPipe := INVALID_HANDLE_VALUE;
   WritePipe := INVALID_HANDLE_VALUE;
-
   try
     // Configurar seguridad para heredar handles
     SecurityAttr.nLength := SizeOf(SecurityAttr);
     SecurityAttr.bInheritHandle := True;
     SecurityAttr.lpSecurityDescriptor := nil;
-
     // Crear pipe
     if not CreatePipe(ReadPipe, WritePipe, @SecurityAttr, 0) then
     begin
       LogMessage('Error creando pipe: ' + IntToStr(GetLastError));
       Exit;
     end;
-
     // Configurar StartupInfo
     ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
     StartupInfo.cb := SizeOf(StartupInfo);
@@ -733,7 +729,6 @@ begin
     StartupInfo.hStdInput := GetStdHandle(STD_INPUT_HANDLE);
     StartupInfo.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
     StartupInfo.wShowWindow := SW_HIDE;
-
     // Crear proceso
     if not CreateProcess(nil, PChar(CommandLine), nil, nil, True, 0, nil,
                         PChar(DirIni), StartupInfo, ProcessInfo) then
@@ -741,16 +736,13 @@ begin
       LogMessage('Error al ejecutar: ' + IntToStr(GetLastError));
       Exit;
     end;
-
     try
       // Cerrar el extremo de escritura del pipe inmediatamente
       CloseHandle(WritePipe);
       WritePipe := INVALID_HANDLE_VALUE;
-
       // Leer salida hasta que el proceso termine
       repeat
         Application.ProcessMessages;
-
         // Intentar leer con timeout
         if ReadFile(ReadPipe, Buffer, SizeOf(Buffer), BytesRead, nil) and (BytesRead > 0) then
         begin
@@ -758,23 +750,18 @@ begin
           Move(Buffer[0], TempBytes[0], BytesRead);
           Output := Output + TEncoding.UTF8.GetString(TempBytes); // UTF8 es más seguro
         end;
-
       until WaitForSingleObject(ProcessInfo.hProcess, 100) <> WAIT_TIMEOUT;
-
       // Verificar código de salida
       if GetExitCodeProcess(ProcessInfo.hProcess, ExitCode) then
       begin
         LogMessage('Proceso terminado con código: ' + IntToStr(ExitCode));
         Result := (ExitCode = 0); // Éxito solo si código de salida es 0
       end;
-
       LogMessage('Salida del proceso:' + sLineBreak + Output);
-
     finally
       CloseHandle(ProcessInfo.hProcess);
       CloseHandle(ProcessInfo.hThread);
     end;
-
   finally
     // Cleanup garantizado
     if ReadPipe <> INVALID_HANDLE_VALUE then
@@ -783,7 +770,6 @@ begin
       CloseHandle(WritePipe);
   end;
 end;
-
 (*function TfrmPublish.ExecuteCommand2(const CommandLine, DirIni: string): Boolean;
 var
   StartupInfo: TStartupInfo;
@@ -797,16 +783,13 @@ var
 begin
   Result := False;
   Output := '';
-
   // Seguridad para heredar handles
   SecurityAttr.nLength := SizeOf(SecurityAttr);
   SecurityAttr.bInheritHandle := True;
   SecurityAttr.lpSecurityDescriptor := nil;
-
   // Crear pipe
   if not CreatePipe(ReadPipe, WritePipe, @SecurityAttr, 0) then
     Exit;
-
   // Configurar StartupInfo
   ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
   StartupInfo.cb := SizeOf(StartupInfo);
@@ -814,13 +797,11 @@ begin
   StartupInfo.hStdError := WritePipe; // Captura también stderr
   StartupInfo.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
   StartupInfo.wShowWindow := SW_HIDE;
-
   // Crear proceso
   if CreateProcess(nil, PChar(CommandLine), nil, nil, True, 0, nil, PChar(DirIni),
     StartupInfo, ProcessInfo) then
   begin
     CloseHandle(WritePipe); // Cerramos escritura
-
     // Leer salida
     repeat
       Application.ProcessMessages;
@@ -833,7 +814,6 @@ begin
         Output := Output + TEncoding.Default.GetString(TempBytes);
       end;
     until WaitForSingleObject(ProcessInfo.hProcess, 50) <> WAIT_TIMEOUT;
-
     // Leer cualquier resto de salida
     repeat
       ReadFile(ReadPipe, Buffer, SizeOf(Buffer), BytesRead, nil);
@@ -844,12 +824,10 @@ begin
         Output := Output + TEncoding.Default.GetString(TempBytes);
       end;
     until BytesRead = 0;
-
     // Cerrar handles
     CloseHandle(ReadPipe);
     CloseHandle(ProcessInfo.hProcess);
     CloseHandle(ProcessInfo.hThread);
-
     LogMessage('Salida del proceso:' + sLineBreak + Output);
     Result := True;
   end
@@ -860,7 +838,6 @@ begin
     CloseHandle(WritePipe);
   end;
 end;*)
-
 // Función alternativa más simple usando ShellExecute (sin capturar salida)
 function TfrmPublish.ExecuteCommand(const Command, Parameters, DirIni: string): Boolean;
 var
@@ -893,12 +870,10 @@ begin
     Result := False;
   end;
 end;
-
 procedure TfrmPublish.LogMessage(const Msg: string);
 begin
   m1.Lines.Add('[' + TimeToStr(Now) + '] ' + Msg);
 end;
-
 procedure TfrmPublish.btnCompileClick(Sender: TObject);
 var
   NewVersion: string;
@@ -1053,13 +1028,9 @@ begin
               if DataObj.TryGetValue('id', AnalysisID) then
               begin
                 m1.Lines.Add('ID de análisis: ' + AnalysisID);
+                editAnalisisID.Text := AnalysisID;
                 m1.Lines.Add('URL del análisis: https://www.virustotal.com/gui/file-analysis/' + AnalysisID);
                 // Esperar un momento y obtener resultado inicial
-                m1.Lines.Add('Esperando resultado inicial...');
-                Sleep(10000);
-                ResultSummary := GetAnalysisResult(AnalysisID);
-                if ResultSummary <> '' then
-                  m1.Lines.Add('Resultado: ' + ResultSummary);
                 Result := True;
               end
               else
@@ -1133,7 +1104,6 @@ begin
                   Undetected := Value.AsType<Integer>;
                 Result := Format('Malicioso: %d, Sospechoso: %d, Inofensivo: %d, No detectado: %d',
                                 [Malicious, Suspicious, Harmless, Undetected]);
-
                 if (Malicious > 0) or (Suspicious > 0) then
                   Result := '⚠️ ' + Result
                 else
@@ -1159,5 +1129,4 @@ begin
     HTTPClient.Free;
   end;
 end;
-
 end.
