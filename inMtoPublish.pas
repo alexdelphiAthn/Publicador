@@ -4,6 +4,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
+  System.NetConsts,
   System.Classes, Vcl.Graphics, System.Masks, ShellAPI, Registry, System.Types,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, clGZip, clTcpClient,
   clSFtp, sevenzip, System.IniFiles, Vcl.ComCtrls, JvgPage, System.Net.URLClient,
@@ -91,6 +92,7 @@ type
     procedure btnSelectProjectClick(Sender: TObject);
     procedure btnAnalizarClick(Sender: TObject);
     procedure btnSelectLibVarGlobClick(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
   private
     sOrigen, sDestino, sPassword, sServer, sServerPort,
     sFolderDest, sUserFtp, sPassFtp, sVersion, sProjFile, sGlobFile:string;
@@ -119,6 +121,7 @@ type
     function CleanDuplicatePaths(const PathsString: string): string;
   private
     FDelphiPaths: TDelphiPaths;
+    F7zDLLHandle: THandle;
   end;
 
 var
@@ -315,6 +318,12 @@ begin
   MakeDll;
   leerIni;
   InitControls;
+end;
+
+procedure TfrmPublish.FormDestroy(Sender: TObject);
+begin
+  if F7zDLLHandle <> 0 then
+    FreeLibrary(F7zDLLHandle);
 end;
 
 procedure TfrmPublish.btnCheckClick(Sender: TObject);
@@ -539,11 +548,12 @@ end;
 procedure TfrmPublish.MakeDll;
 var
   DLLPath: string;
-  DLLHandle: THandle;
 begin
   // Extraer DLL del recurso
   DLLPath := ExtraerDLLDeRecurso;
-  DLLHandle := LoadLibrary(PChar(DLLPath));
+  F7zDLLHandle := LoadLibrary(PChar(DLLPath));
+  if F7zDLLHandle = 0 then
+    raise Exception.Create('Error cargando 7z.dll');
 end;
 
 function TfrmPublish.leCadINI (clave, cadena : string; defecto : string) : string;
@@ -585,7 +595,6 @@ end;
 
 procedure TfrmPublish.leerIni;
 var
-  i: Integer;
   extensiones: string;
 begin
   sOrigen      := leCadIni('Basic', 'Source', 'c:\');
@@ -922,7 +931,6 @@ end;
 procedure TfrmPublish.btnCompileClick(Sender: TObject);
 var
   NewVersion: string;
-  CompileDateTime, ExeFile, OutputExe: string;
 begin
   // Validar campos
   if not FileExists(edtProjectPath.Text) then
@@ -1065,7 +1073,6 @@ var
   RequestBody: TMemoryStream;
   FileContent: TBytes;
   DataObj: TJSONObject;
-  ResultSummary: string;
   ContentStr: AnsiString;
 begin
   Result := False;

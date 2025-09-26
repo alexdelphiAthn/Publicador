@@ -12,6 +12,7 @@ object frmPublish: TfrmPublish
   Font.Style = []
   OnClose = FormClose
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   TextHeight = 21
   object m1: TMemo
     Left = 0
@@ -23,6 +24,8 @@ object frmPublish: TfrmPublish
       'm1')
     ScrollBars = ssVertical
     TabOrder = 0
+    ExplicitTop = 430
+    ExplicitWidth = 896
   end
   object jpcPestanas: TJvgPageControl
     Left = 0
