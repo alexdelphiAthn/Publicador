@@ -23,8 +23,6 @@ object frmPublish: TfrmPublish
       'm1')
     ScrollBars = ssVertical
     TabOrder = 0
-    ExplicitTop = 430
-    ExplicitWidth = 896
   end
   object jpcPestanas: TJvgPageControl
     Left = 0
@@ -106,7 +104,6 @@ object frmPublish: TfrmPublish
         Height = 25
         Caption = '...'
         TabOrder = 1
-        OnClick = btn3Click
       end
       object btnComprimir: TButton
         Left = 80
@@ -279,6 +276,7 @@ object frmPublish: TfrmPublish
           Height = 25
           Caption = 'Seleccionar'
           TabOrder = 4
+          OnClick = btnSelectLibVarGlobClick
         end
         object edtVirusTotalAPIKey: TEdit
           Left = 152
@@ -483,11 +481,26 @@ object frmPublish: TfrmPublish
     Top = 560
   end
   object dlgOpenPoject: TJvOpenDialog
-    Filter = 'Poyecto Delphi dpr (*.dpr)|*.dpr'
+    Filter = 'Proyecto Delphi dpr (*.dpr)|*.dpr'
     Options = [ofReadOnly, ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
     Height = 0
     Width = 0
     Left = 448
+    Top = 312
+  end
+  object dlgSelectFolder: TFileOpenDialog
+    FavoriteLinks = <>
+    FileTypes = <>
+    Options = [fdoPickFolders, fdoForceFileSystem, fdoPathMustExist]
+    Left = 504
+    Top = 312
+  end
+  object dlgOpenLibVarGlob: TJvOpenDialog
+    Filter = 'Archivo Pascal (*.pas)|*.pas'
+    Options = [ofReadOnly, ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
+    Height = 0
+    Width = 0
+    Left = 560
     Top = 312
   end
 end
