@@ -32,7 +32,7 @@ object frmPublish: TfrmPublish
     Top = 0
     Width = 900
     Height = 431
-    ActivePage = tsCompilacion
+    ActivePage = tsPatrones
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -68,8 +68,6 @@ object frmPublish: TfrmPublish
     TabSelectedStyle.Gradient.Active = False
     TabSelectedStyle.Gradient.Orientation = fgdHorizontal
     Options = [ftoAutoFontDirection, ftoExcludeGlyphs]
-    ExplicitWidth = 896
-    ExplicitHeight = 430
     object tsFicheros: TTabSheet
       Caption = 'Ficheros C'#243'digo Fuente'
       object lblOrigen: TLabel
@@ -161,16 +159,16 @@ object frmPublish: TfrmPublish
         Caption = 'Patrones'
       end
       object edtExtension: TEdit
-        Left = 72
-        Top = 32
-        Width = 137
+        Left = 96
+        Top = 31
+        Width = 97
         Height = 29
         TabOrder = 0
       end
       object btnAddExt: TButton
-        Left = 215
-        Top = 35
-        Width = 178
+        Left = 199
+        Top = 67
+        Width = 90
         Height = 25
         Caption = 'A'#241'adir'
         TabOrder = 1
@@ -194,9 +192,9 @@ object frmPublish: TfrmPublish
         TabOrder = 2
       end
       object btnDeleteExt: TButton
-        Left = 111
-        Top = 283
-        Width = 74
+        Left = 199
+        Top = 252
+        Width = 90
         Height = 25
         Caption = 'Quitar'
         TabOrder = 3
@@ -455,6 +453,54 @@ object frmPublish: TfrmPublish
         Caption = 'Enviar Fichero Destino'
         TabOrder = 5
         OnClick = btnEnviarFTPClick
+      end
+    end
+    object tsPublicarExe: TTabSheet
+      Caption = 'Publicar ejecutable'
+      ImageIndex = 4
+      object edtExtension1: TEdit
+        Left = 16
+        Top = 40
+        Width = 201
+        Height = 29
+        TabOrder = 0
+      end
+      object lstExtensiones1: TListBox
+        Left = 16
+        Top = 74
+        Width = 201
+        Height = 211
+        ItemHeight = 21
+        Items.Strings = (
+          'c:\')
+        TabOrder = 1
+      end
+      object btnAddExt1: TButton
+        Left = 223
+        Top = 74
+        Width = 122
+        Height = 25
+        Caption = 'A'#241'adir fichero'
+        TabOrder = 2
+        OnClick = btnAddExtClick
+      end
+      object btnDeleteExt1: TButton
+        Left = 223
+        Top = 260
+        Width = 74
+        Height = 25
+        Caption = 'Quitar'
+        TabOrder = 3
+        OnClick = btnDeleteExtClick
+      end
+      object btnSelectProject1: TButton
+        Left = 223
+        Top = 43
+        Width = 74
+        Height = 25
+        Caption = 'Buscar'
+        TabOrder = 4
+        OnClick = btnSelectProjectClick
       end
     end
   end

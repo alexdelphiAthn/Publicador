@@ -75,6 +75,12 @@ type
     EditAnalisisID: TEdit;
     dlgSelectFolder: TFileOpenDialog;
     dlgOpenLibVarGlob: TJvOpenDialog;
+    tsPublicarExe: TTabSheet;
+    edtExtension1: TEdit;
+    lstExtensiones1: TListBox;
+    btnAddExt1: TButton;
+    btnDeleteExt1: TButton;
+    btnSelectProject1: TButton;
     procedure btnCheckClick(Sender: TObject);
     procedure btnComprimirClick(Sender: TObject);
     procedure btnOrigenClick(Sender: TObject);
@@ -797,12 +803,10 @@ begin
         if Trim(IncPath) <> '' then
           ResponseFileContent.Add('-I' + IncPath);
     end;
-
     ResponseFileContent.Add('-LEC:\Users\Public\Documents\Embarcadero\Studio\20.0\Bpl');
     ResponseFileContent.Add('-LNC:\Users\Public\Documents\Embarcadero\Studio\20.0\Dcp');
     ResponseFileContent.Add('-NU.\Win32\Release');
     ResponseFileContent.Add('-NSWinapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;');
-
     // RESOURCE PATHS (-R) - Para archivos .res como JvConsts.res
     if FDelphiPaths.ResourcePaths <> '' then
     begin
@@ -949,20 +953,17 @@ begin
   Output := TStringBuilder.Create;
   ReadPipe := INVALID_HANDLE_VALUE;
   WritePipe := INVALID_HANDLE_VALUE;
-
   try
     // Configurar seguridad para heredar handles
     SecurityAttr.nLength := SizeOf(SecurityAttr);
     SecurityAttr.bInheritHandle := True;
     SecurityAttr.lpSecurityDescriptor := nil;
-
     // Crear pipe con buffer más grande
     if not CreatePipe(ReadPipe, WritePipe, @SecurityAttr, BUFFER_SIZE * 4) then
     begin
       LogMessage('Error creando pipe: ' + IntToStr(GetLastError));
       Exit;
     end;
-
     // Configurar StartupInfo
     ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
     StartupInfo.cb := SizeOf(StartupInfo);
@@ -971,7 +972,6 @@ begin
     StartupInfo.hStdInput := GetStdHandle(STD_INPUT_HANDLE);
     StartupInfo.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
     StartupInfo.wShowWindow := SW_HIDE;
-
     // Crear proceso
     if not CreateProcess(nil, PChar(CommandLine), nil, nil, True,
                         CREATE_NO_WINDOW, nil, PChar(DirIni), StartupInfo, ProcessInfo) then
@@ -979,23 +979,18 @@ begin
       LogMessage('Error al ejecutar: ' + IntToStr(GetLastError));
       Exit;
     end;
-
     try
       // Cerrar el extremo de escritura del pipe inmediatamente
       CloseHandle(WritePipe);
       WritePipe := INVALID_HANDLE_VALUE;
-
       ProcessRunning := True;
-
       // Bucle principal de lectura
       while ProcessRunning do
       begin
         Application.ProcessMessages;
-
         // Verificar si el proceso sigue ejecutándose
         WaitResult := WaitForSingleObject(ProcessInfo.hProcess, 0);
         ProcessRunning := (WaitResult = WAIT_TIMEOUT);
-
         // Verificar si hay datos disponibles en el pipe
         if PeekNamedPipe(ReadPipe, nil, 0, nil, @BytesAvailable, nil) then
         begin
@@ -1007,7 +1002,6 @@ begin
             begin
               SetLength(TempBytes, BytesRead);
               Move(Buffer[0], TempBytes[0], BytesRead);
-
               // Intentar diferentes codificaciones
               try
                 Output.Append(TEncoding.UTF8.GetString(TempBytes));
@@ -1033,12 +1027,10 @@ begin
           // Error en PeekNamedPipe y proceso terminado
           Break;
         end;
-
         // Pequeña pausa para evitar consumir demasiada CPU
         if BytesAvailable = 0 then
           Sleep(READ_TIMEOUT);
       end;
-
       // Leer cualquier dato restante después de que termine el proceso
       repeat
         if PeekNamedPipe(ReadPipe, nil, 0, nil, @BytesAvailable, nil) and (BytesAvailable > 0) then
@@ -1058,26 +1050,22 @@ begin
         else
           Break;
       until False;
-
       // Verificar código de salida
       if GetExitCodeProcess(ProcessInfo.hProcess, ExitCode) then
       begin
         LogMessage('Proceso terminado con código: ' + IntToStr(ExitCode));
         Result := (ExitCode = 0);
       end;
-
       // Mostrar toda la salida capturada
       var CompleteOutput := Output.ToString;
       LogMessage('=== SALIDA COMPLETA DEL PROCESO ===');
       LogMessage('Longitud total: ' + IntToStr(Length(CompleteOutput)) + ' caracteres');
       LogMessage(CompleteOutput);
       LogMessage('=== FIN SALIDA PROCESO ===');
-
     finally
       CloseHandle(ProcessInfo.hProcess);
       CloseHandle(ProcessInfo.hThread);
     end;
-
   finally
     // Cleanup garantizado
     if ReadPipe <> INVALID_HANDLE_VALUE then
