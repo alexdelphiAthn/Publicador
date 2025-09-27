@@ -43,15 +43,15 @@ object frmPublish: TfrmPublish
     ParentFont = False
     ScrollBars = ssVertical
     TabOrder = 0
-    ExplicitTop = 430
-    ExplicitWidth = 1067
+    ExplicitLeft = -8
+    ExplicitTop = 434
   end
   object jpcPestanas: TJvgPageControl
     Left = 0
     Top = 0
     Width = 1071
     Height = 428
-    ActivePage = tsFicheros
+    ActivePage = tsCompilacion
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -333,13 +333,6 @@ object frmPublish: TfrmPublish
           Height = 21
           Caption = 'inLibVarGlob.pas:'
         end
-        object lbl4: TLabel
-          Left = 16
-          Top = 120
-          Width = 127
-          Height = 21
-          Caption = 'VirusTotal API Key:'
-        end
         object edtVersion: TEdit
           Left = 152
           Top = 22
@@ -380,21 +373,6 @@ object frmPublish: TfrmPublish
           TabOrder = 4
           OnClick = btnSelectLibVarGlobClick
         end
-        object edtVirusTotalAPIKey: TEdit
-          Left = 152
-          Top = 118
-          Width = 553
-          Height = 29
-          TabOrder = 5
-        end
-        object chkSendToVirusTotal: TCheckBox
-          Left = 152
-          Top = 154
-          Width = 497
-          Height = 17
-          Caption = 'Enviar a VirusTotal autom'#225'ticamente despu'#233's de la compilaci'#243'n'
-          TabOrder = 6
-        end
         object btnCompile: TButton
           Left = 80
           Top = 208
@@ -407,7 +385,7 @@ object frmPublish: TfrmPublish
           Font.Name = 'Tahoma'
           Font.Style = [fsBold]
           ParentFont = False
-          TabOrder = 7
+          TabOrder = 5
           OnClick = btnCompileClick
         end
         object btnGetDate: TButton
@@ -422,23 +400,8 @@ object frmPublish: TfrmPublish
           Font.Name = 'Tahoma'
           Font.Style = [fsBold]
           ParentFont = False
-          TabOrder = 8
+          TabOrder = 6
           OnClick = btnGetDateClick
-        end
-        object btnVirusTotal: TButton
-          Left = 622
-          Top = 208
-          Width = 179
-          Height = 25
-          Caption = 'ENVIAR A VIRUSTOTAL'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'Tahoma'
-          Font.Style = [fsBold]
-          ParentFont = False
-          TabOrder = 9
-          OnClick = btnVirusTotalClick
         end
         object chkVersionarVariable: TCheckBox
           Left = 678
@@ -448,29 +411,7 @@ object frmPublish: TfrmPublish
           Caption = 'No Versionar Vble.'
           Checked = True
           State = cbChecked
-          TabOrder = 10
-        end
-        object btnAnalizar: TButton
-          Left = 622
-          Top = 153
-          Width = 211
-          Height = 25
-          Caption = 'ANALIZAR RESPUESTA VIRUSTOTAL'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'Tahoma'
-          Font.Style = [fsBold]
-          ParentFont = False
-          TabOrder = 11
-          OnClick = btnAnalizarClick
-        end
-        object edtAnalisisID: TEdit
-          Left = 720
-          Top = 118
-          Width = 97
-          Height = 29
-          TabOrder = 12
+          TabOrder = 7
         end
       end
     end
@@ -485,11 +426,18 @@ object frmPublish: TfrmPublish
         Caption = 'Ficheros que acompa'#241'an al ejecutable'
       end
       object lbl21: TLabel
-        Left = 394
-        Top = 43
+        Left = 488
+        Top = 13
         Width = 88
         Height = 21
         Caption = 'Carpeta final'
+      end
+      object lbl4: TLabel
+        Left = 488
+        Top = 91
+        Width = 127
+        Height = 21
+        Caption = 'VirusTotal API Key:'
       end
       object edtExtension1: TEdit
         Left = 16
@@ -501,29 +449,35 @@ object frmPublish: TfrmPublish
       object lstExtensiones1: TListBox
         Left = 16
         Top = 74
-        Width = 201
+        Width = 345
         Height = 211
-        ItemHeight = 21
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Style = []
+        ItemHeight = 13
         Items.Strings = (
           'C:\DISCO DURO\proyectos\subocasoft\script_109.sql'
           'C:\DISCO DURO\proyectos\subocasoft\SUBOCASOFT VERSION 109.docx')
+        ParentFont = False
         TabOrder = 1
       end
       object btnAddExt1: TButton
-        Left = 223
-        Top = 74
-        Width = 122
+        Left = 303
+        Top = 43
+        Width = 26
         Height = 25
-        Caption = 'A'#241'adir fichero'
+        Caption = '+'
         TabOrder = 2
         OnClick = btnAddExtClick
       end
       object btnDeleteExt1: TButton
-        Left = 223
-        Top = 260
-        Width = 74
+        Left = 335
+        Top = 43
+        Width = 26
         Height = 25
-        Caption = 'Quitar'
+        Caption = '-'
         TabOrder = 3
         OnClick = btnDeleteExtClick
       end
@@ -552,6 +506,74 @@ object frmPublish: TfrmPublish
         Caption = 'Seleccionar'
         TabOrder = 6
         OnClick = btnSelectProjectClick
+      end
+      object btnComprimirExe: TButton
+        Left = 384
+        Top = 208
+        Width = 449
+        Height = 25
+        Caption = 'Comprimir'
+        TabOrder = 7
+      end
+      object chkSendToVirusTotal: TCheckBox
+        Left = 384
+        Top = 154
+        Width = 497
+        Height = 17
+        Caption = 'Enviar a VirusTotal autom'#225'ticamente despu'#233's de la compresi'#243'n'
+        TabOrder = 8
+      end
+      object edtVirusTotalAPIKey: TEdit
+        Left = 488
+        Top = 118
+        Width = 449
+        Height = 29
+        TabOrder = 9
+      end
+      object btnAnalizar: TButton
+        Left = 854
+        Top = 153
+        Width = 211
+        Height = 25
+        Caption = 'ANALIZAR RESPUESTA VIRUSTOTAL'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'Tahoma'
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 10
+        OnClick = btnAnalizarClick
+      end
+      object btnVirusTotal: TButton
+        Left = 854
+        Top = 208
+        Width = 179
+        Height = 25
+        Caption = 'ENVIAR A VIRUSTOTAL'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'Tahoma'
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 11
+        OnClick = btnVirusTotalClick
+      end
+      object edtAnalisisID: TEdit
+        Left = 952
+        Top = 118
+        Width = 97
+        Height = 29
+        TabOrder = 12
+      end
+      object btnEnviarFTPExe: TButton
+        Left = 384
+        Top = 260
+        Width = 449
+        Height = 25
+        Caption = 'Enviar Fichero Destino'
+        TabOrder = 13
       end
     end
   end
@@ -585,22 +607,22 @@ object frmPublish: TfrmPublish
     Options = [ofReadOnly, ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
     Height = 0
     Width = 0
-    Left = 448
-    Top = 312
+    Left = 256
+    Top = 560
   end
   object dlgSelectFolder: TFileOpenDialog
     FavoriteLinks = <>
     FileTypes = <>
     Options = [fdoPickFolders, fdoForceFileSystem, fdoPathMustExist]
-    Left = 504
-    Top = 312
+    Left = 360
+    Top = 560
   end
   object dlgOpenLibVarGlob: TJvOpenDialog
     Filter = 'Archivo Pascal (*.pas)|*.pas'
     Options = [ofReadOnly, ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
     Height = 0
     Width = 0
-    Left = 560
-    Top = 312
+    Left = 464
+    Top = 560
   end
 end

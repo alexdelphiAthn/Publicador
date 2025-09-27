@@ -55,20 +55,14 @@ type
     lbl1: TLabel;
     lbl2: TLabel;
     lbl3: TLabel;
-    lbl4: TLabel;
     edtVersion: TEdit;
     edtProjectPath: TEdit;
     btnSelectProject: TButton;
     edtLibVarGlobPath: TEdit;
     btnSelectLibVarGlob: TButton;
-    edtVirusTotalAPIKey: TEdit;
-    chkSendToVirusTotal: TCheckBox;
     btnCompile: TButton;
     btnGetDate: TButton;
-    btnVirusTotal: TButton;
     chkVersionarVariable: TCheckBox;
-    btnAnalizar: TButton;
-    edtAnalisisID: TEdit;
     tsFTP: TTabSheet;
     lblPassword1: TLabel;
     lblPuerto: TLabel;
@@ -97,6 +91,14 @@ type
     edtProjectPath1: TEdit;
     lbl21: TLabel;
     btnSelectProject2: TButton;
+    btnComprimirExe: TButton;
+    chkSendToVirusTotal: TCheckBox;
+    edtVirusTotalAPIKey: TEdit;
+    lbl4: TLabel;
+    btnAnalizar: TButton;
+    btnVirusTotal: TButton;
+    edtAnalisisID: TEdit;
+    btnEnviarFTPExe: TButton;
     procedure btnCheckClick(Sender: TObject);
     procedure btnComprimirClick(Sender: TObject);
     procedure btnOrigenClick(Sender: TObject);
@@ -1396,10 +1398,10 @@ begin
     begin
       m1.Lines.Add('=== COMPILACIÓN EXITOSA ===');
       // Paso 3: Enviar a VirusTotal si está habilitado
-      if chkSendToVirusTotal.Checked then
-      begin
-        EnviarVirusTotal;
-      end;
+//      if chkSendToVirusTotal.Checked then
+//      begin
+//        EnviarVirusTotal;
+//      end;
 //      ProgressBar1.Position := 100;
       m1.Lines.Add('Proceso completado exitosamente!' + #13#10 +
                   'Versión: ' + NewVersion);
