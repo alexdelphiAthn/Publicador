@@ -2,7 +2,7 @@ object frmPublish: TfrmPublish
   Left = 0
   Top = 0
   Caption = 'Publicaci'#243'n de ejecutables y c'#243'digo fuente'
-  ClientHeight = 606
+  ClientHeight = 536
   ClientWidth = 1071
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -16,7 +16,7 @@ object frmPublish: TfrmPublish
   TextHeight = 21
   object spl1: TSplitter
     Left = 0
-    Top = 428
+    Top = 358
     Width = 1071
     Height = 3
     Cursor = crVSplit
@@ -36,7 +36,7 @@ object frmPublish: TfrmPublish
   end
   object m1: TMemo
     Left = 0
-    Top = 431
+    Top = 361
     Width = 1071
     Height = 175
     Align = alBottom
@@ -57,8 +57,8 @@ object frmPublish: TfrmPublish
     Left = 0
     Top = 0
     Width = 1071
-    Height = 428
-    ActivePage = tsCompilacion
+    Height = 358
+    ActivePage = tsFicheros
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -94,8 +94,7 @@ object frmPublish: TfrmPublish
     TabSelectedStyle.Gradient.Active = False
     TabSelectedStyle.Gradient.Orientation = fgdHorizontal
     Options = [ftoAutoFontDirection, ftoExcludeGlyphs]
-    ExplicitWidth = 1067
-    ExplicitHeight = 427
+    ExplicitHeight = 428
     object tsFicheros: TTabSheet
       Caption = 'Ficheros C'#243'digo Fuente'
       object lblOrigen: TLabel
