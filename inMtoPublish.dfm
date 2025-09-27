@@ -3,7 +3,7 @@ object frmPublish: TfrmPublish
   Top = 0
   Caption = 'Publicaci'#243'n de ejecutables y c'#243'digo fuente'
   ClientHeight = 606
-  ClientWidth = 900
+  ClientWidth = 1071
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -14,14 +14,33 @@ object frmPublish: TfrmPublish
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   TextHeight = 21
+  object spl1: TSplitter
+    Left = 0
+    Top = 428
+    Width = 1071
+    Height = 3
+    Cursor = crVSplit
+    Align = alBottom
+    Beveled = True
+    Color = clBackground
+    ParentColor = False
+    ExplicitTop = 0
+    ExplicitWidth = 431
+  end
   object m1: TMemo
     Left = 0
     Top = 431
-    Width = 900
+    Width = 1071
     Height = 175
     Align = alBottom
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -13
+    Font.Name = 'JetBrains Mono'
+    Font.Style = []
     Lines.Strings = (
       'm1')
+    ParentFont = False
     ScrollBars = ssVertical
     TabOrder = 0
     ExplicitTop = 430
@@ -30,9 +49,9 @@ object frmPublish: TfrmPublish
   object jpcPestanas: TJvgPageControl
     Left = 0
     Top = 0
-    Width = 900
-    Height = 431
-    ActivePage = tsPatrones
+    Width = 1071
+    Height = 428
+    ActivePage = tsFicheros
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -68,28 +87,37 @@ object frmPublish: TfrmPublish
     TabSelectedStyle.Gradient.Active = False
     TabSelectedStyle.Gradient.Orientation = fgdHorizontal
     Options = [ftoAutoFontDirection, ftoExcludeGlyphs]
+    ExplicitWidth = 900
+    ExplicitHeight = 431
     object tsFicheros: TTabSheet
       Caption = 'Ficheros C'#243'digo Fuente'
       object lblOrigen: TLabel
         Left = 16
         Top = 18
-        Width = 48
+        Width = 106
         Height = 21
-        Caption = 'Origen'
+        Caption = 'Carpeta Origen'
       end
       object lblOrigen1: TLabel
         Left = 16
         Top = 66
-        Width = 53
+        Width = 108
         Height = 21
-        Caption = 'Destino'
+        Caption = 'Fichero Destino'
       end
       object lblPassword: TLabel
         Left = 16
         Top = 117
-        Width = 134
+        Width = 223
         Height = 21
-        Caption = 'Contrase'#241'a Fichero'
+        Caption = 'Contrase'#241'a Fichero comprimido'
+      end
+      object lblExtensiones: TLabel
+        Left = 608
+        Top = 4
+        Width = 60
+        Height = 21
+        Caption = 'Patrones'
       end
       object edtOrigen: TEdit
         Left = 16
@@ -120,7 +148,7 @@ object frmPublish: TfrmPublish
         Top = 89
         Width = 185
         Height = 25
-        Caption = 'Listar interior 7z'
+        Caption = 'Probar Listar interior 7z'
         TabOrder = 3
         OnClick = btnCheckClick
       end
@@ -147,35 +175,15 @@ object frmPublish: TfrmPublish
         Height = 29
         TabOrder = 6
       end
-    end
-    object tsPatrones: TTabSheet
-      Caption = 'Patrones a incluir de c'#243'digo Fuente'
-      ImageIndex = 2
-      object lblExtensiones: TLabel
-        Left = 149
-        Top = 8
-        Width = 60
-        Height = 21
-        Caption = 'Patrones'
-      end
       object edtExtension: TEdit
-        Left = 96
+        Left = 608
         Top = 31
         Width = 97
         Height = 29
-        TabOrder = 0
-      end
-      object btnAddExt: TButton
-        Left = 199
-        Top = 67
-        Width = 90
-        Height = 25
-        Caption = 'A'#241'adir'
-        TabOrder = 1
-        OnClick = btnAddExtClick
+        TabOrder = 7
       end
       object lstExtensiones: TListBox
-        Left = 96
+        Left = 608
         Top = 66
         Width = 97
         Height = 211
@@ -189,186 +197,25 @@ object frmPublish: TfrmPublish
           '*.sql'
           '*.ini'
           '*.docx')
-        TabOrder = 2
+        TabOrder = 8
+      end
+      object btnAddExt: TButton
+        Left = 711
+        Top = 67
+        Width = 90
+        Height = 25
+        Caption = 'A'#241'adir'
+        TabOrder = 9
+        OnClick = btnAddExtClick
       end
       object btnDeleteExt: TButton
-        Left = 199
+        Left = 711
         Top = 252
         Width = 90
         Height = 25
         Caption = 'Quitar'
-        TabOrder = 3
+        TabOrder = 10
         OnClick = btnDeleteExtClick
-      end
-    end
-    object tsCompilacion: TTabSheet
-      Caption = 'Compilacion'
-      ImageIndex = 3
-      object grp1: TGroupBox
-        Left = 3
-        Top = 3
-        Width = 849
-        Height = 334
-        Caption = ' Configuraci'#243'n '
-        TabOrder = 0
-        object lbl1: TLabel
-          Left = 88
-          Top = 24
-          Width = 55
-          Height = 21
-          Caption = 'Versi'#243'n:'
-        end
-        object lbl2: TLabel
-          Left = 22
-          Top = 56
-          Width = 121
-          Height = 21
-          Caption = 'Archivo Proyecto:'
-        end
-        object lbl3: TLabel
-          Left = 23
-          Top = 88
-          Width = 120
-          Height = 21
-          Caption = 'inLibVarGlob.pas:'
-        end
-        object lbl4: TLabel
-          Left = 16
-          Top = 120
-          Width = 127
-          Height = 21
-          Caption = 'VirusTotal API Key:'
-        end
-        object edtVersion: TEdit
-          Left = 152
-          Top = 22
-          Width = 200
-          Height = 29
-          TabOrder = 0
-          Text = '109.112014092025'
-        end
-        object edtProjectPath: TEdit
-          Left = 152
-          Top = 54
-          Width = 400
-          Height = 29
-          TabOrder = 1
-        end
-        object btnSelectProject: TButton
-          Left = 558
-          Top = 52
-          Width = 99
-          Height = 25
-          Caption = 'Seleccionar'
-          TabOrder = 2
-          OnClick = btnSelectProjectClick
-        end
-        object edtLibVarGlobPath: TEdit
-          Left = 152
-          Top = 86
-          Width = 400
-          Height = 29
-          TabOrder = 3
-        end
-        object btnSelectLibVarGlob: TButton
-          Left = 558
-          Top = 84
-          Width = 99
-          Height = 25
-          Caption = 'Seleccionar'
-          TabOrder = 4
-          OnClick = btnSelectLibVarGlobClick
-        end
-        object edtVirusTotalAPIKey: TEdit
-          Left = 152
-          Top = 118
-          Width = 553
-          Height = 29
-          TabOrder = 5
-        end
-        object chkSendToVirusTotal: TCheckBox
-          Left = 152
-          Top = 160
-          Width = 329
-          Height = 17
-          Caption = 'Enviar a VirusTotal autom'#225'ticamente'
-          TabOrder = 6
-        end
-        object btnCompile: TButton
-          Left = 80
-          Top = 208
-          Width = 449
-          Height = 25
-          Caption = 'COMPILAR Y CONSTRUIR EXE RELEASE'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'Tahoma'
-          Font.Style = [fsBold]
-          ParentFont = False
-          TabOrder = 7
-          OnClick = btnCompileClick
-        end
-        object btnGetDate: TButton
-          Left = 358
-          Top = 25
-          Width = 147
-          Height = 25
-          Caption = 'Obtener Fecha y Hora '
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'Tahoma'
-          Font.Style = [fsBold]
-          ParentFont = False
-          TabOrder = 8
-          OnClick = btnGetDateClick
-        end
-        object btnVirusTotal: TButton
-          Left = 622
-          Top = 153
-          Width = 179
-          Height = 25
-          Caption = 'ENVIAR A VIRUSTOTAL'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'Tahoma'
-          Font.Style = [fsBold]
-          ParentFont = False
-          TabOrder = 9
-          OnClick = btnVirusTotalClick
-        end
-        object chkVersionarVariable: TCheckBox
-          Left = 678
-          Top = 88
-          Width = 329
-          Height = 17
-          Caption = 'No Versionar Vble.'
-          TabOrder = 10
-        end
-        object btnAnalizar: TButton
-          Left = 622
-          Top = 177
-          Width = 211
-          Height = 25
-          Caption = 'ANALIZAR RESPUESTA VIRUSTOTAL'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'Tahoma'
-          Font.Style = [fsBold]
-          ParentFont = False
-          TabOrder = 11
-          OnClick = btnAnalizarClick
-        end
-        object EditAnalisisID: TEdit
-          Left = 720
-          Top = 118
-          Width = 97
-          Height = 29
-          TabOrder = 12
-        end
       end
     end
     object tsFTP: TTabSheet
@@ -455,9 +302,195 @@ object frmPublish: TfrmPublish
         OnClick = btnEnviarFTPClick
       end
     end
+    object tsCompilacion: TTabSheet
+      Caption = 'Compilacion'
+      ImageIndex = 3
+      object grp1: TGroupBox
+        Left = 3
+        Top = -13
+        Width = 849
+        Height = 334
+        Caption = ' Configuraci'#243'n '
+        TabOrder = 0
+        object lbl1: TLabel
+          Left = 88
+          Top = 24
+          Width = 55
+          Height = 21
+          Caption = 'Versi'#243'n:'
+        end
+        object lbl2: TLabel
+          Left = 22
+          Top = 56
+          Width = 121
+          Height = 21
+          Caption = 'Archivo Proyecto:'
+        end
+        object lbl3: TLabel
+          Left = 23
+          Top = 88
+          Width = 120
+          Height = 21
+          Caption = 'inLibVarGlob.pas:'
+        end
+        object lbl4: TLabel
+          Left = 16
+          Top = 120
+          Width = 127
+          Height = 21
+          Caption = 'VirusTotal API Key:'
+        end
+        object edtVersion: TEdit
+          Left = 152
+          Top = 22
+          Width = 161
+          Height = 29
+          TabOrder = 0
+          Text = '109.112014092025'
+        end
+        object edtProjectPath: TEdit
+          Left = 152
+          Top = 54
+          Width = 400
+          Height = 29
+          TabOrder = 1
+        end
+        object btnSelectProject: TButton
+          Left = 558
+          Top = 52
+          Width = 99
+          Height = 25
+          Caption = 'Seleccionar'
+          TabOrder = 2
+          OnClick = btnSelectProjectClick
+        end
+        object edtLibVarGlobPath: TEdit
+          Left = 152
+          Top = 86
+          Width = 400
+          Height = 29
+          TabOrder = 3
+        end
+        object btnSelectLibVarGlob: TButton
+          Left = 558
+          Top = 84
+          Width = 99
+          Height = 25
+          Caption = 'Seleccionar'
+          TabOrder = 4
+          OnClick = btnSelectLibVarGlobClick
+        end
+        object edtVirusTotalAPIKey: TEdit
+          Left = 152
+          Top = 118
+          Width = 553
+          Height = 29
+          TabOrder = 5
+        end
+        object chkSendToVirusTotal: TCheckBox
+          Left = 152
+          Top = 154
+          Width = 497
+          Height = 17
+          Caption = 'Enviar a VirusTotal autom'#225'ticamente despu'#233's de la compilaci'#243'n'
+          TabOrder = 6
+        end
+        object btnCompile: TButton
+          Left = 80
+          Top = 208
+          Width = 449
+          Height = 25
+          Caption = 'COMPILAR Y CONSTRUIR EXE RELEASE'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 7
+          OnClick = btnCompileClick
+        end
+        object btnGetDate: TButton
+          Left = 319
+          Top = 25
+          Width = 147
+          Height = 25
+          Caption = 'Obtener Fecha y Hora '
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 8
+          OnClick = btnGetDateClick
+        end
+        object btnVirusTotal: TButton
+          Left = 622
+          Top = 208
+          Width = 179
+          Height = 25
+          Caption = 'ENVIAR A VIRUSTOTAL'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 9
+          OnClick = btnVirusTotalClick
+        end
+        object chkVersionarVariable: TCheckBox
+          Left = 678
+          Top = 88
+          Width = 329
+          Height = 17
+          Caption = 'No Versionar Vble.'
+          Checked = True
+          State = cbChecked
+          TabOrder = 10
+        end
+        object btnAnalizar: TButton
+          Left = 622
+          Top = 153
+          Width = 211
+          Height = 25
+          Caption = 'ANALIZAR RESPUESTA VIRUSTOTAL'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 11
+          OnClick = btnAnalizarClick
+        end
+        object edtAnalisisID: TEdit
+          Left = 720
+          Top = 118
+          Width = 97
+          Height = 29
+          TabOrder = 12
+        end
+      end
+    end
     object tsPublicarExe: TTabSheet
       Caption = 'Publicar ejecutable'
       ImageIndex = 4
+      object lbl5: TLabel
+        Left = 16
+        Top = 13
+        Width = 263
+        Height = 21
+        Caption = 'Ficheros que acompa'#241'an al ejecutable'
+      end
+      object lbl21: TLabel
+        Left = 394
+        Top = 43
+        Width = 88
+        Height = 21
+        Caption = 'Carpeta final'
+      end
       object edtExtension1: TEdit
         Left = 16
         Top = 40
@@ -472,7 +505,8 @@ object frmPublish: TfrmPublish
         Height = 211
         ItemHeight = 21
         Items.Strings = (
-          'c:\')
+          'C:\DISCO DURO\proyectos\subocasoft\script_109.sql'
+          'C:\DISCO DURO\proyectos\subocasoft\SUBOCASOFT VERSION 109.docx')
         TabOrder = 1
       end
       object btnAddExt1: TButton
@@ -500,6 +534,23 @@ object frmPublish: TfrmPublish
         Height = 25
         Caption = 'Buscar'
         TabOrder = 4
+        OnClick = btnSelectProjectClick
+      end
+      object edtProjectPath1: TEdit
+        Left = 488
+        Top = 40
+        Width = 400
+        Height = 29
+        TabOrder = 5
+        Text = 'C:\DISCO DURO\proyectos\subocasoft'
+      end
+      object btnSelectProject2: TButton
+        Left = 894
+        Top = 38
+        Width = 99
+        Height = 25
+        Caption = 'Seleccionar'
+        TabOrder = 6
         OnClick = btnSelectProjectClick
       end
     end

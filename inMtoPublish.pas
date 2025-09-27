@@ -9,7 +9,8 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, clGZip, clTcpClient,
   clSFtp, sevenzip, System.IniFiles, Vcl.ComCtrls, JvgPage, System.Net.URLClient,
   System.IOUtils, System.StrUtils, System.DateUtils, System.Net.HttpClient,
-  System.Net.HttpClientComponent, System.JSON, JvDialogs, clTcpClientSsh;
+  System.Net.HttpClientComponent, System.JSON, JvDialogs, clTcpClientSsh,
+  Vcl.ExtCtrls;
 
 type
   TDelphiPaths = record
@@ -18,41 +19,37 @@ type
     IncludePaths: string;   // Para -I
     ObjectPaths: string;    // Para -O (raramente usado)
   end;
+  TFileItem = record
+    Name: string;
+    FullPath: string;
+    Size: Int64;
+    PackedSize: Int64;
+    ModificationDate: string;
+    IsFolder: Boolean;
+    Extension: string;
+    IndentLevel: Integer;
+  end;
   TfrmPublish = class(TForm)
     clsftp3: TclSFtp;
     m1: TMemo;
     sd7z: TSaveDialog;
     flpndlg1: TFileOpenDialog;
     sFtpClient: TclSFtp;
+    dlgOpenPoject: TJvOpenDialog;
+    dlgSelectFolder: TFileOpenDialog;
+    dlgOpenLibVarGlob: TJvOpenDialog;
     jpcPestanas: TJvgPageControl;
     tsFicheros: TTabSheet;
-    tsFTP: TTabSheet;
-    lblPassword1: TLabel;
-    edtServer: TEdit;
-    lblPuerto: TLabel;
-    edtPuerto: TEdit;
-    lblCarpetaRemot: TLabel;
-    edtCarpetaRemota: TEdit;
-    lblPassword11: TLabel;
-    edtUsuario: TEdit;
-    lblPassFTP: TLabel;
-    edtPassFTP: TEdit;
-    btnEnviarFTP: TButton;
     lblOrigen: TLabel;
+    lblOrigen1: TLabel;
+    lblPassword: TLabel;
     edtOrigen: TEdit;
+    btn3: TButton;
     btnComprimir: TButton;
     btnCheck: TButton;
     edtDestino: TEdit;
-    lblOrigen1: TLabel;
     btnDestino: TButton;
-    lblPassword: TLabel;
     edtPassword: TEdit;
-    tsPatrones: TTabSheet;
-    lblExtensiones: TLabel;
-    edtExtension: TEdit;
-    btnAddExt: TButton;
-    lstExtensiones: TListBox;
-    btnDeleteExt: TButton;
     tsCompilacion: TTabSheet;
     grp1: TGroupBox;
     lbl1: TLabel;
@@ -69,18 +66,37 @@ type
     btnCompile: TButton;
     btnGetDate: TButton;
     btnVirusTotal: TButton;
-    dlgOpenPoject: TJvOpenDialog;
     chkVersionarVariable: TCheckBox;
     btnAnalizar: TButton;
-    EditAnalisisID: TEdit;
-    dlgSelectFolder: TFileOpenDialog;
-    dlgOpenLibVarGlob: TJvOpenDialog;
+    edtAnalisisID: TEdit;
+    tsFTP: TTabSheet;
+    lblPassword1: TLabel;
+    lblPuerto: TLabel;
+    lblCarpetaRemot: TLabel;
+    lblPassword11: TLabel;
+    lblPassFTP: TLabel;
+    edtServer: TEdit;
+    edtPuerto: TEdit;
+    edtCarpetaRemota: TEdit;
+    edtUsuario: TEdit;
+    edtPassFTP: TEdit;
+    btnEnviarFTP: TButton;
     tsPublicarExe: TTabSheet;
     edtExtension1: TEdit;
     lstExtensiones1: TListBox;
     btnAddExt1: TButton;
     btnDeleteExt1: TButton;
     btnSelectProject1: TButton;
+    edtExtension: TEdit;
+    lstExtensiones: TListBox;
+    btnAddExt: TButton;
+    btnDeleteExt: TButton;
+    lblExtensiones: TLabel;
+    spl1: TSplitter;
+    lbl5: TLabel;
+    edtProjectPath1: TEdit;
+    lbl21: TLabel;
+    btnSelectProject2: TButton;
     procedure btnCheckClick(Sender: TObject);
     procedure btnComprimirClick(Sender: TObject);
     procedure btnOrigenClick(Sender: TObject);
@@ -105,7 +121,9 @@ type
     sVirusTotalAPI : string;
     aFiles:TStringList;
   private
+    function FormatFileSize(Size: Int64): string;
     procedure LogMessage(const Msg: string);
+    procedure ShowArchiveStatistics(Arch: I7zInArchive);
     procedure RecorrerCarpetasConTDirectory(const CarpetaRaiz: string);
     function ExtraerDLLDeRecurso: string;
     procedure MakeDll;
@@ -332,10 +350,236 @@ begin
     FreeLibrary(F7zDLLHandle);
 end;
 
+//https://jachguate.wordpress.com/2012/12/10/7zip-y-delphi/
+
+function TfrmPublish.FormatFileSize(Size: Int64): string;
+begin
+  if Size < 1024 then
+    Result := IntToStr(Size) + ' B'
+  else if Size < 1024 * 1024 then
+    Result := FormatFloat('#,##0.0', Size / 1024) + ' KB'
+  else if Size < 1024 * 1024 * 1024 then
+    Result := FormatFloat('#,##0.0', Size / (1024 * 1024)) + ' MB'
+  else
+    Result := FormatFloat('#,##0.0', Size / (1024 * 1024 * 1024)) + ' GB';
+end;
+
+procedure TfrmPublish.ShowArchiveStatistics(Arch: I7zInArchive);
+var
+  I: Integer;
+  TotalFiles, TotalFolders: Integer;
+  TotalOriginalSize, TotalCompressedSize: Int64;
+  PropValue: OleVariant;
+  FileSize, CompressedSize: Int64;
+  CompressionRatio: Double;
+begin
+  TotalFiles := 0;
+  TotalFolders := 0;
+  TotalOriginalSize := 0;
+  TotalCompressedSize := 0;
+
+  // Contar archivos y calcular tamaños totales
+  for I := 0 to Arch.NumberOfItems - 1 do
+  begin
+    if Arch.ItemIsFolder[I] then
+      Inc(TotalFolders)
+    else
+    begin
+      Inc(TotalFiles);
+      FileSize := Arch.ItemSize[I];
+      TotalOriginalSize := TotalOriginalSize + FileSize;
+
+      try
+        Arch.InArchive.GetProperty(I, kpidPackedSize, PropValue);
+        if not (VarIsNull(PropValue) or VarIsEmpty(PropValue)) then
+        begin
+          CompressedSize := PropValue;
+          TotalCompressedSize := TotalCompressedSize + CompressedSize;
+        end;
+      except
+        // Ignorar errores
+      end;
+    end;
+  end;
+
+  // Mostrar estadísticas
+  M1.Lines.Add('');
+  M1.Lines.Add('ESTADÍSTICAS DEL ARCHIVO:');
+  M1.Lines.Add(StringOfChar('=', 40));
+  M1.Lines.Add('Archivos: ' + IntToStr(TotalFiles));
+  M1.Lines.Add('Carpetas: ' + IntToStr(TotalFolders));
+  M1.Lines.Add('Tamaño original total: ' + FormatFileSize(TotalOriginalSize));
+  M1.Lines.Add('Tamaño comprimido total: ' + FormatFileSize(TotalCompressedSize));
+
+  if TotalOriginalSize > 0 then
+  begin
+    CompressionRatio := ((TotalOriginalSize - TotalCompressedSize) / TotalOriginalSize) * 100;
+    M1.Lines.Add('Ratio de compresión: ' + FormatFloat('0.0', CompressionRatio) + '%');
+    M1.Lines.Add('Factor de compresión: ' + FormatFloat('0.0', TotalOriginalSize / TotalCompressedSize) + ':1');
+  end;
+end;
+
 procedure TfrmPublish.btnCheckClick(Sender: TObject);
 var
   Arch: I7zInArchive;
-  I: Integer;
+  I, J: Integer;
+  ItemPath: string;
+  ItemSize, PackedSize: Int64;
+  IsFolder: Boolean;
+  SizeStr, PackedStr, TypeStr, DateStr: string;
+  Indent: string;
+  FolderLevel: Integer;
+  PropValue: OleVariant;
+  TotalFiles, TotalFolders: Integer;
+  TotalOriginalSize, TotalCompressedSize: Int64;
+  FileItems: array of TFileItem;
+  FileItem: TFileItem;
+
+  function GetCompressionRatio(Original, Compressed: Int64): string;
+  var
+    Ratio: Double;
+  begin
+    if (Original <= 0) or (Compressed <= 0) then
+      Result := 'N/A'
+    else
+    begin
+      Ratio := ((Original - Compressed) / Original) * 100;
+      if (Ratio < -100) or (Ratio > 100) then
+        Result := 'N/A'
+      else
+        Result := FormatFloat('0.0', Ratio) + '%';
+    end;
+  end;
+
+  function CalculateIndentLevel(const Path: string): Integer;
+  var
+    I: Integer;
+  begin
+    Result := 0;
+    for I := 1 to Length(Path) do
+      if (Path[I] = '/') or (Path[I] = '\') then
+        Inc(Result);
+  end;
+
+  function GetFileModificationDate(Archive: I7zInArchive; Index: Integer): string;
+  var
+    PropVar: OleVariant;
+    FileTime: TFileTime;
+    SystemTime: TSystemTime;
+    DateTime: TDateTime;
+    VarData: TVarData;
+  begin
+    Result := 'N/A';
+    try
+      Archive.InArchive.GetProperty(Index, kpidLastWriteTime, PropVar);
+
+      if not (VarIsNull(PropVar) or VarIsEmpty(PropVar)) then
+      begin
+        VarData := TVarData(PropVar);
+
+        // El tipo 64 (VT_FILETIME) necesita manejo especial
+        if VarData.VType = 64 then
+        begin
+          // Para VT_FILETIME, los datos están en VarData.VInt64
+          FileTime.dwLowDateTime := LongWord(VarData.VInt64 and $FFFFFFFF);
+          FileTime.dwHighDateTime := LongWord((VarData.VInt64 shr 32) and $FFFFFFFF);
+
+          if FileTimeToLocalFileTime(FileTime, FileTime) then
+          begin
+            if FileTimeToSystemTime(FileTime, SystemTime) then
+            begin
+              DateTime := SystemTimeToDateTime(SystemTime);
+              Result := FormatDateTime('dd/mm/yyyy hh:nn', DateTime);
+            end;
+          end;
+        end
+        else
+        begin
+          case VarData.VType of
+            varDate:
+            begin
+              DateTime := PropVar;
+              Result := FormatDateTime('dd/mm/yyyy hh:nn', DateTime);
+            end;
+            varInt64, varUInt64:
+            begin
+              FileTime.dwLowDateTime := LongWord(VarData.VInt64 and $FFFFFFFF);
+              FileTime.dwHighDateTime := LongWord((VarData.VInt64 shr 32) and $FFFFFFFF);
+
+              if FileTimeToLocalFileTime(FileTime, FileTime) then
+              begin
+                if FileTimeToSystemTime(FileTime, SystemTime) then
+                begin
+                  DateTime := SystemTimeToDateTime(SystemTime);
+                  Result := FormatDateTime('dd/mm/yyyy hh:nn', DateTime);
+                end;
+              end;
+            end;
+          end;
+        end;
+      end;
+    except
+      Result := 'N/A';
+    end;
+  end;
+
+  function GetPackedSizeFromArchive(Archive: I7zInArchive; Index: Integer): Int64;
+  var
+    PropVar: OleVariant;
+  begin
+    Result := 0;
+    try
+      Archive.InArchive.GetProperty(Index, kpidPackedSize, PropVar);
+
+      if not (VarIsNull(PropVar) or VarIsEmpty(PropVar)) then
+      begin
+        case VarType(PropVar) of
+          varByte, varSmallint, varInteger, varSingle, varDouble, varCurrency, varDate:
+            Result := PropVar;
+          varInt64:
+            Result := PropVar;
+          varUnknown, varDispatch:
+            Result := 0;
+        else
+          try
+            Result := PropVar;
+          except
+            Result := 0;
+          end;
+        end;
+
+        if (Result < 0) or (Result > MaxInt) then
+          Result := 0;
+      end;
+    except
+      Result := 0;
+    end;
+  end;
+
+  // Función para ordenar los elementos alfabéticamente
+  procedure SortFileItems(var Items: array of TFileItem; Count: Integer);
+  var
+    I, J: Integer;
+    Temp: TFileItem;
+  begin
+    // Algoritmo de ordenamiento burbuja simple
+    for I := 0 to Count - 2 do
+    begin
+      for J := 0 to Count - 2 - I do
+      begin
+        // Primero ordenar por carpetas (carpetas primero), luego alfabéticamente
+        if ((Items[J].IsFolder = Items[J + 1].IsFolder) and
+           (CompareText(Items[J].Name, Items[J + 1].Name) > 0)) or
+           ((not Items[J].IsFolder) and Items[J + 1].IsFolder) then
+        begin
+          Temp := Items[J];
+          Items[J] := Items[J + 1];
+          Items[J + 1] := Temp;
+        end;
+      end;
+    end;
+  end;
+
 begin
   if not FileExists(edtDestino.Text) then
   begin
@@ -344,23 +588,136 @@ begin
   else
   begin
     M1.Lines.Clear;
-    M1.Lines.Add(StringOfChar('=', 30));
+    M1.Lines.Add('CONTENIDO DEL ARCHIVO: ' + ExtractFileName(edtDestino.Text) + ' (ORDENADO ALFABÉTICAMENTE)');
+    M1.Lines.Add(StringOfChar('=', 110));
+    M1.Lines.Add('');
+
     try
       Arch := CreateInArchive(CLSID_CFormat7z);
       Arch.OpenFile(edtDestino.Text);
       Arch.SetPassword(edtPassword.Text);
+
+      // Inicializar contadores para estadísticas
+      TotalFiles := 0;
+      TotalFolders := 0;
+      TotalOriginalSize := 0;
+      TotalCompressedSize := 0;
+
+      // Dimensionar el array para todos los elementos
+      SetLength(FileItems, Arch.NumberOfItems);
+
+      // PRIMERA PASADA: Recoger toda la información
       for I := 0 to Arch.NumberOfItems - 1 do
-        if not Arch.ItemIsFolder[I] then
-          M1.Lines.Add(Arch.ItemPath[I]);
+      begin
+        ItemPath := Arch.ItemPath[I];
+        IsFolder := Arch.ItemIsFolder[I];
+
+        // Llenar la estructura de datos
+        FileItems[I].Name := ExtractFileName(ItemPath);
+        FileItems[I].FullPath := ItemPath;
+        FileItems[I].IsFolder := IsFolder;
+        FileItems[I].ModificationDate := GetFileModificationDate(Arch, I);
+        FileItems[I].IndentLevel := CalculateIndentLevel(ItemPath);
+
+        if not IsFolder then
+        begin
+          FileItems[I].Size := Arch.ItemSize[I];
+          FileItems[I].PackedSize := GetPackedSizeFromArchive(Arch, I);
+          FileItems[I].Extension := UpperCase(ExtractFileExt(ItemPath));
+
+          // Actualizar contadores
+          Inc(TotalFiles);
+          TotalOriginalSize := TotalOriginalSize + FileItems[I].Size;
+          if FileItems[I].PackedSize > 0 then
+            TotalCompressedSize := TotalCompressedSize + FileItems[I].PackedSize;
+        end
+        else
+        begin
+          FileItems[I].Size := 0;
+          FileItems[I].PackedSize := 0;
+          FileItems[I].Extension := 'CARPETA';
+          Inc(TotalFolders);
+        end;
+      end;
+
+      // ORDENAR los elementos alfabéticamente
+      SortFileItems(FileItems, Arch.NumberOfItems);
+
+      // MOSTRAR el listado ordenado
+      M1.Lines.Add('Número total de elementos: ' + IntToStr(Arch.NumberOfItems));
+      M1.Lines.Add('');
+      M1.Lines.Add(Format('%-40s %12s %16s %s',
+        ['NOMBRE', 'TAMAÑO','MODIFICADO', 'TIPO']));
+      M1.Lines.Add(StringOfChar('-', 80));
+
+      for I := 0 to Arch.NumberOfItems - 1 do
+      begin
+        FileItem := FileItems[I];
+
+        // Calcular indentación
+        Indent := StringOfChar(' ', FileItem.IndentLevel * 2);
+
+        // Formatear tamaño
+        if FileItem.IsFolder then
+          SizeStr := '<DIR>'
+        else
+          SizeStr := FormatFileSize(FileItem.Size);
+
+        // Mostrar información del elemento
+        if FileItem.IsFolder then
+        begin
+          M1.Lines.Add(Format('%s[%s]%s %12s %16s %s',
+            [Indent, Copy(FileItem.Name, 1, 35-Length(Indent)),
+             StringOfChar(' ', 35-Length(Indent)-Length(FileItem.Name)),
+             SizeStr, FileItem.ModificationDate, FileItem.Extension]));
+        end
+        else
+        begin
+          M1.Lines.Add(Format('%s%s%s %12s %16s %s',
+            [Indent, Copy(FileItem.Name, 1, 35-Length(Indent)),
+             StringOfChar(' ', 35-Length(Indent)-Length(FileItem.Name)),
+             SizeStr, FileItem.ModificationDate, FileItem.Extension]));
+        end;
+      end;
+
+      M1.Lines.Add(StringOfChar('-', 80));
+
+      // Mostrar estadísticas finales
+      M1.Lines.Add('');
+      M1.Lines.Add('ESTADÍSTICAS DEL ARCHIVO:');
+      M1.Lines.Add(StringOfChar('=', 40));
+      M1.Lines.Add('Archivos: ' + IntToStr(TotalFiles));
+      M1.Lines.Add('Carpetas: ' + IntToStr(TotalFolders));
+      M1.Lines.Add('Tamaño original total: ' + FormatFileSize(TotalOriginalSize));
+
+      if TotalCompressedSize > 0 then
+      begin
+        M1.Lines.Add('Tamaño comprimido total: ' + FormatFileSize(TotalCompressedSize));
+        if TotalOriginalSize > 0 then
+        begin
+          var OverallRatio := ((TotalOriginalSize - TotalCompressedSize) / TotalOriginalSize) * 100;
+          M1.Lines.Add('Ratio de compresión: ' + FormatFloat('0.0', OverallRatio) + '%');
+          if TotalCompressedSize > 0 then
+            M1.Lines.Add('Factor de compresión: ' + FormatFloat('0.0', TotalOriginalSize / TotalCompressedSize) + ':1');
+        end;
+      end
+      else
+      begin
+        M1.Lines.Add('Tamaño comprimido: No disponible individualmente');
+      end;
+
+      M1.Lines.Add('');
+      M1.Lines.Add('Listado completado exitosamente (ordenado alfabéticamente)');
+
     except
       on E:Exception do
       begin
         M1.Lines.Add(Format('ERROR: [%s] %s', [E.ClassName, E.Message]));
-        raise;
+        LogMessage('Error al listar contenido del archivo: ' + E.Message);
       end;
     end;
   end;
-end;    //https://jachguate.wordpress.com/2012/12/10/7zip-y-delphi/
+end;
 
 procedure TfrmPublish.RecorrerCarpetasConTDirectory(const CarpetaRaiz: string);
 var
@@ -472,11 +829,11 @@ end;
 
 procedure TfrmPublish.btnAnalizarClick(Sender: TObject);
 begin
-                m1.Lines.Add('Resultado inicial...');
+  m1.Lines.Add('Resultado inicial...');
 
-                var ResultSummary := GetAnalysisResult(editAnalisisId.Text);
-                if ResultSummary <> '' then
-                  m1.Lines.Add('Resultado: ' + ResultSummary);
+  var ResultSummary := GetAnalysisResult(edtAnalisisId.Text);
+  if ResultSummary <> '' then
+    m1.Lines.Add('Resultado: ' + ResultSummary);
 end;
 
 procedure TfrmPublish.btnDeleteExtClick(Sender: TObject);
@@ -603,8 +960,8 @@ procedure TfrmPublish.leerIni;
 var
   extensiones: string;
 begin
-  sOrigen      := leCadIni('Basic', 'Source', 'c:\');
-  sDestino     := leCadIni('Basic', 'Destination', 'c:\');
+  sOrigen      := leCadIni('Basic', 'DirSource', 'c:\');
+  sDestino     := leCadIni('Basic', 'DirDestination', 'c:\');
   sPassword    := leCadIni('Basic', 'PasswordZip', 'passZip');
   sServer      := leCadIni('sFTP', 'Server', 'server.com');
   sServerPort  := leCadIni('sFTP', 'Port', '21');
@@ -854,83 +1211,6 @@ begin
     ResponseFileContent.Free;
   end;
 end;
-
-//function TfrmPublish.ExecuteCommand2(const CommandLine, DirIni: string): Boolean;
-//var
-//  StartupInfo: TStartupInfo;
-//  ProcessInfo: TProcessInformation;
-//  SecurityAttr: TSecurityAttributes;
-//  ReadPipe, WritePipe: THandle;
-//  Buffer: array[0..4095] of Byte;
-//  BytesRead: DWORD;
-//  TempBytes: TBytes;
-//  Output: string;
-//  ExitCode: DWORD;
-//begin
-//  Result := False;
-//  Output := '';
-//  ReadPipe := INVALID_HANDLE_VALUE;
-//  WritePipe := INVALID_HANDLE_VALUE;
-//  try
-//    // Configurar seguridad para heredar handles
-//    SecurityAttr.nLength := SizeOf(SecurityAttr);
-//    SecurityAttr.bInheritHandle := True;
-//    SecurityAttr.lpSecurityDescriptor := nil;
-//    // Crear pipe
-//    if not CreatePipe(ReadPipe, WritePipe, @SecurityAttr, 0) then
-//    begin
-//      LogMessage('Error creando pipe: ' + IntToStr(GetLastError));
-//      Exit;
-//    end;
-//    // Configurar StartupInfo
-//    ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
-//    StartupInfo.cb := SizeOf(StartupInfo);
-//    StartupInfo.hStdOutput := WritePipe;
-//    StartupInfo.hStdError := WritePipe;
-//    StartupInfo.hStdInput := GetStdHandle(STD_INPUT_HANDLE);
-//    StartupInfo.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
-//    StartupInfo.wShowWindow := SW_HIDE;
-//    // Crear proceso
-//    if not CreateProcess(nil, PChar(CommandLine), nil, nil, True, 0, nil,
-//                        PChar(DirIni), StartupInfo, ProcessInfo) then
-//    begin
-//      LogMessage('Error al ejecutar: ' + IntToStr(GetLastError));
-//      Exit;
-//    end;
-//    try
-//      // Cerrar el extremo de escritura del pipe inmediatamente
-//      CloseHandle(WritePipe);
-//      WritePipe := INVALID_HANDLE_VALUE;
-//      // Leer salida hasta que el proceso termine
-//      repeat
-//        Application.ProcessMessages;
-//        // Intentar leer con timeout
-//        if ReadFile(ReadPipe, Buffer, SizeOf(Buffer), BytesRead, nil) and (BytesRead > 0) then
-//        begin
-//          SetLength(TempBytes, BytesRead);
-//          Move(Buffer[0], TempBytes[0], BytesRead);
-//          Output := Output + TEncoding.UTF8.GetString(TempBytes);
-//        end;
-//      until WaitForSingleObject(ProcessInfo.hProcess, 100) <> WAIT_TIMEOUT;
-//      // Verificar código de salida
-//      if GetExitCodeProcess(ProcessInfo.hProcess, ExitCode) then
-//      begin
-//        LogMessage('Proceso terminado con código: ' + IntToStr(ExitCode));
-//        Result := (ExitCode = 0); // Éxito solo si código de salida es 0
-//      end;
-//      LogMessage('Salida del proceso:' + sLineBreak + Output);
-//    finally
-//      CloseHandle(ProcessInfo.hProcess);
-//      CloseHandle(ProcessInfo.hThread);
-//    end;
-//  finally
-//    // Cleanup garantizado
-//    if ReadPipe <> INVALID_HANDLE_VALUE then
-//      CloseHandle(ReadPipe);
-//    if WritePipe <> INVALID_HANDLE_VALUE then
-//      CloseHandle(WritePipe);
-//  end;
-//end;
 
 function TfrmPublish.ExecuteCommand2(const CommandLine, DirIni: string): Boolean;
 var
