@@ -1250,7 +1250,7 @@ begin
                                         FDelphiPaths.IncludePaths).Split([';']);
       for var IncPath in IncludeArray do
         if Trim(IncPath) <> '' then
-          ResponseFileContent.Add('-I' + IncPath);
+          ResponseFileContent.Add('-pI' + IncPath);
     end;
     //ResponseFileContent.Add('-LEC:\Users\Public\Documents\Embarcadero\Studio\20.0\Bpl');
     ResponseFileContent.Add('-LE'+
