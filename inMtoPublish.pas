@@ -635,7 +635,6 @@ begin
         begin
           FileItems[I].Size := 0;
           FileItems[I].PackedSize := 0;
-          FileItems[I].Extension := 'CARPETA';
           Inc(TotalFolders);
         end;
       end;
@@ -646,8 +645,8 @@ begin
       // MOSTRAR el listado ordenado
       M1.Lines.Add('Número total de elementos: ' + IntToStr(Arch.NumberOfItems));
       M1.Lines.Add('');
-      M1.Lines.Add(Format('%-40s %12s %16s %s',
-        ['NOMBRE', 'TAMAÑO','MODIFICADO', 'TIPO']));
+      M1.Lines.Add(Format('%-40s %12s %16s',
+        ['NOMBRE', 'TAMAÑO','MODIFICADO']));
       M1.Lines.Add(StringOfChar('-', 80));
 
       for I := 0 to Arch.NumberOfItems - 1 do
@@ -666,17 +665,17 @@ begin
         // Mostrar información del elemento
         if FileItem.IsFolder then
         begin
-          M1.Lines.Add(Format('%s[%s]%s %12s %16s %s',
+          M1.Lines.Add(Format('%s[%s]%s %12s %16s',
             [Indent, Copy(FileItem.Name, 1, 35-Length(Indent)),
              StringOfChar(' ', 35-Length(Indent)-Length(FileItem.Name)),
-             SizeStr, FileItem.ModificationDate, FileItem.Extension]));
+             SizeStr, FileItem.ModificationDate]));
         end
         else
         begin
-          M1.Lines.Add(Format('%s%s%s %12s %16s %s',
+          M1.Lines.Add(Format('%s%s%s %12s %16s',
             [Indent, Copy(FileItem.Name, 1, 35-Length(Indent)),
              StringOfChar(' ', 35-Length(Indent)-Length(FileItem.Name)),
-             SizeStr, FileItem.ModificationDate, FileItem.Extension]));
+             SizeStr, FileItem.ModificationDate]));
         end;
       end;
 
