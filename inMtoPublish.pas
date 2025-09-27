@@ -99,6 +99,23 @@ type
     btnVirusTotal: TButton;
     edtAnalisisID: TEdit;
     btnEnviarFTPExe: TButton;
+    lbl22: TLabel;
+    edtBasePath: TEdit;
+    lbl221: TLabel;
+    edtCommonPath: TEdit;
+    lbl222: TLabel;
+    lbl223: TLabel;
+    lbl224: TLabel;
+    edtPlatForm: TEdit;
+    lbl225: TLabel;
+    lbl226: TLabel;
+    edtConfig: TEdit;
+    lbl2211: TLabel;
+    edtOutputExe: TEdit;
+    lbl22111: TLabel;
+    edtParamAdd: TEdit;
+    edtCompilerName: TEdit;
+    edtVersionDelphi: TEdit;
     procedure btnCheckClick(Sender: TObject);
     procedure btnComprimirClick(Sender: TObject);
     procedure btnOrigenClick(Sender: TObject);
@@ -122,6 +139,15 @@ type
     sFolderDest, sUserFtp, sPassFtp, sVersion, sProjFile, sGlobFile:string;
     sVirusTotalAPI : string;
     aFiles:TStringList;
+    sDelphiBasePath: string;      // C:\Program Files (x86)\Embarcadero\Studio\20.0
+    sDelphiCommonPath: string;    // C:\Users\Public\Documents\Embarcadero\Studio\20.0
+    sCompilerName: string;        // dcc32.exe o dcc64.exe
+    sDelphiVersion: string;       // 20.0, 21.0, 22.0, etc.
+    sPlatform: string;            // Win32, Win64, Android, etc.
+      // Configuración de compilación
+    sBuildConfiguration: string;  // Release, Debug
+    sOutputDirectory: string;     // .\Win32\Release, .\Win64\Release, etc.
+    sAdditionalParams: string;    // Parámetros extra del compilador
   private
     function FormatFileSize(Size: Int64): string;
     procedure LogMessage(const Msg: string);
@@ -148,6 +174,7 @@ type
   private
     FDelphiPaths: TDelphiPaths;
     F7zDLLHandle: THandle;
+
   end;
 
 var
@@ -164,7 +191,7 @@ var
   RegistryKey: string;
   SearchPath, BrowsingPath, DebugPath: string;
   PackageDCPOutput, PackageBPLOutput: string;
-  Temp: string;
+  Temp, PlatformPath: string;
 begin
   // Inicializar resultado
   Result.UnitPaths := '';
@@ -173,9 +200,21 @@ begin
   Result.ObjectPaths := '';
   Registry := TRegistry.Create;
   try
+    if (edtPlatForm.Text = 'Win64') then
+      PlatformPath := 'Win64'
+    else
+      PlatformPath := 'Win32';
     Registry.RootKey := HKEY_CURRENT_USER;
-    RegistryKey := Format('SOFTWARE\Embarcadero\BDS\%s\Library\Win32', [DelphiVersion]);
-
+    RegistryKey := Format('SOFTWARE\Embarcadero\BDS\%s\Library\%s',
+                                                 [DelphiVersion, PlatformPath]);
+    Result.UnitPaths := Format('"%s\lib\%s\%s"',
+                              [edtBasePath.Text, PlatformPath, edtConfig.Text]);
+    Result.UnitPaths := Result.UnitPaths + Format(';"%s\Imports"',
+                                                            [edtBasePath.Text]);
+    Result.UnitPaths := Result.UnitPaths + Format(';"%s\Dcp"',
+                                                          [edtCommonPath.Text]);
+    Result.UnitPaths := Result.UnitPaths + Format(';"%s\include"',
+                                                            [edtBasePath.Text]);
     if Registry.OpenKeyReadOnly(RegistryKey) then
     begin
       // UNIT PATHS (-U) - Combinación de Search Path + Browsing Path
@@ -191,7 +230,8 @@ begin
         LogMessage('Registry Browsing Path: ' + BrowsingPath);
         if (BrowsingPath <> '') and (Pos(BrowsingPath, Result.UnitPaths) = 0) then
         begin
-          if Result.UnitPaths <> '' then Result.UnitPaths := Result.UnitPaths + ';';
+          if Result.UnitPaths <> '' then
+            Result.UnitPaths := Result.UnitPaths + ';';
           Result.UnitPaths := Result.UnitPaths + BrowsingPath;
         end;
       end;
@@ -977,6 +1017,14 @@ begin
    //Cargar extensiones en el ListBox
   lstExtensiones.Items.Clear;
   lstExtensiones.Items.CommaText := extensiones;
+  sDelphiBasePath := leCadIni('Compiler', 'DelphiBasePath', 'c:\program files (x86)\embarcadero\studio\20.0');
+  sDelphiCommonPath := leCadIni('Compiler', 'DelphiCommonPath', 'C:\Users\Public\Documents\Embarcadero\Studio\20.0');
+  sCompilerName := leCadIni('Compiler', 'CompilerName', 'dcc32.exe');
+  sDelphiVersion := leCadIni('Compiler', 'DelphiVersion', '20.0');
+  sPlatform := leCadIni('Compiler', 'Platform', 'Win32');
+  sBuildConfiguration := leCadIni('Compiler', 'BuildConfiguration', 'Release');
+  sOutputDirectory := leCadIni('Compiler', 'OutputDirectory', '.\Win32\Release');
+  sAdditionalParams := leCadIni('Compiler', 'AdditionalParams', '');
 end;
 procedure TfrmPublish.LogMessage(const Msg: string);
 begin
@@ -997,6 +1045,15 @@ begin
   edtProjectPath.Text         := sProjFile;
   edtLibVarGlobPath.Text      := sGlobFile;
   edtVirusTotalAPIKey.Text    := sVirusTotalAPI;
+  //compiler
+  edtBasePath.Text := sDelphiBasePath;
+  edtCommonPath.Text := sDelphiCommonPath;
+  edtCompilerName.Text := sCompilerName;
+  edtVersionDelphi.Text := sDelphiVersion;
+  edtPlatForm.Text := sPlatform;
+  edtConfig.Text := sBuildConfiguration;
+  edtOutputExe.Text := sOutputDirectory;
+  edtParamAdd.Text := sAdditionalParams;
 end;
 
 procedure TfrmPublish.grabarIni;
@@ -1016,6 +1073,14 @@ begin
   sProjFile     := edtProjectPath.Text;
   sGlobFile     := edtLibVarGlobPath.Text;
   sVirusTotalAPI := edtVirusTotalApiKey.Text;
+  sDelphiBasePath := edtBasePath.Text;
+  sDelphiCommonPath := edtCommonPath.Text;
+  sCompilerName := edtCompilerName.Text;
+  sDelphiVersion := edtVersionDelphi.Text;
+  sPlatform := edtPlatForm.Text;
+  sBuildConfiguration := edtConfig.Text;
+  sOutputDirectory := edtOutputExe.Text;
+  sAdditionalParams := edtParamAdd.Text;
   // Convertir lista de extensiones a string separado por comas
   extensiones := '';
   for i := 0 to lstExtensiones.Items.Count - 1 do
@@ -1038,6 +1103,15 @@ begin
   esCadINI('Compilation', 'ProjectFile',    sProjFile);
   esCadINI('Compilation', 'LibGlobFile',    sGlobFile);
   esCadINI('Other', 'APIVirusTotal', sVirusTotalAPI);
+  //compiler
+  esCadIni('Compiler', 'DelphiBasePath',      sDelphiBasePath);
+  esCadIni('Compiler', 'DelphiCommonPath',    sDelphiCommonPath);
+  esCadIni('Compiler', 'CompilerName',        sCompilerName);
+  esCadIni('Compiler', 'DelphiVersion',       sDelphiVersion);
+  esCadIni('Compiler', 'Platform',            sPlatform);
+  esCadIni('Compiler', 'BuildConfiguration',  sBuildConfiguration);
+  esCadIni('Compiler', 'OutputDirectory',     sOutputDirectory);
+  esCadIni('Compiler', 'AdditionalParams',    sAdditionalParams);
 end;
 
 //FUNCIONES Y PROC COMPILACION
@@ -1092,14 +1166,16 @@ var
   BasePaths: string;
 begin
   // Paths base obligatorios de Delphi
-  BasePaths := '"c:\program files (x86)\embarcadero\studio\20.0\lib\Win32\release"';
-  BasePaths := BasePaths + ';"c:\program files (x86)\embarcadero\studio\20.0\Imports"';
-  BasePaths := BasePaths + ';"C:\Users\Public\Documents\Embarcadero\Studio\20.0\Dcp"';
-  BasePaths := BasePaths + ';"c:\program files (x86)\embarcadero\studio\20.0\include"';
-
+  BasePaths := Format('"' + IncludeTrailingBackslash(edtBasePath.Text) +
+                              'lib\%s\%s"', [edtPlatForm.Text, edtConfig.Text]);
+  BasePaths := BasePaths + ';"' + IncludeTrailingBackslash(edtBasePath.Text) +
+                                                                     'Imports"';
+  BasePaths := BasePaths + ';"'+IncludeTrailingBackslash(edtCommonPath.Text) +
+                                                                         'Dcp"';
+  BasePaths := BasePaths + ';"' + IncludeTrailingBackslash(edtBasePath.Text) +
+                                                                     'include"';
   // Leer configuración completa del registro
-  DelphiPaths := ReadCompleteDelphiPaths('20.0');
-
+  DelphiPaths := ReadCompleteDelphiPaths(edtVersionDelphi.Text);
   if DelphiPaths.UnitPaths <> '' then
   begin
     LogMessage('Usando paths del registro de Delphi');
@@ -1110,9 +1186,7 @@ begin
     LogMessage('Usando solo paths base');
     Result := BasePaths;
   end;
-
   Result := CleanDuplicatePaths(Result);
-
   // Guardar los paths organizados para usar en la compilación
   FDelphiPaths := DelphiPaths; // Variable de clase para usar después
 end;
@@ -1122,7 +1196,7 @@ var
   Command: WideString;
   ProjectDir: string;
   ProjectName: string;
-  DelphiBin: string;
+  DelphiBin, PathDcu: string;
   ResponseFile: string;
   ResponseFileContent: TStringList;
   AllPaths: string;
@@ -1130,10 +1204,10 @@ begin
   Result := False;
   ProjectDir := ExtractFilePath(edtProjectPath.Text);
   ProjectName := ExtractFileName(edtProjectPath.Text);
-  DelphiBin := 'c:\program files (x86)\embarcadero\studio\20.0\bin';
+  DelphiBin := IncludeTrailingPathDelimiter(edtBasePath.Text) + 'bin';
   LogMessage('=== CONFIGURACIÓN DE COMPILACIÓN ===');
   LogMessage('Versión Delphi: 10.3');
-  LogMessage('Compilador: ' + DelphiBin + '\dcc32.exe');
+  LogMessage('Compilador: ' + DelphiBin + '\' + edtCompilerName.Text);
   LogMessage('Directorio de trabajo: ' + ProjectDir);
   LogMessage('Archivo proyecto: ' + ProjectName);
   // Crear archivo de respuesta temporal
@@ -1143,32 +1217,62 @@ begin
     // Obtener paths organizados del registro (esto popula FDelphiPaths)
     AllPaths := GetDelphiRegistryPaths;
     // Construir contenido del archivo de respuesta con parámetros apropiados
-    ResponseFileContent.Add('-$D0');
+    //ResponseFileContent.Add('-$D0');
     ResponseFileContent.Add('-$L-');
     ResponseFileContent.Add('-$Y-');
     ResponseFileContent.Add('--no-config');
     ResponseFileContent.Add('-B');
     ResponseFileContent.Add('-Q');
     ResponseFileContent.Add('-TX.exe');
-    ResponseFileContent.Add('-AGenerics.Collections=System.Generics.Collections;Generics.Defaults=System.Generics.Defaults;WinTypes=Winapi.Windows;WinProcs=Winapi.Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE');
-    ResponseFileContent.Add('-DRELEASE');
-    ResponseFileContent.Add('-E.\Win32\Release');
+    ResponseFileContent.Add('-AGenerics.Collections=' +
+                            'System.Generics.Collections;'+
+                            'Generics.Defaults=System.Generics.Defaults;' +
+                            'WinTypes=Winapi.Windows;WinProcs=Winapi.Windows;' +
+                            'DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE');
+    if SameText(edtConfig.Text, 'Debug') then
+    begin
+      ResponseFileContent.Add('-DDEBUG');
+      ResponseFileContent.Add('-$D+');  // Debug info
+      ResponseFileContent.Add('-$O-');  // No optimization
+    end
+    else
+    begin
+      ResponseFileContent.Add('-DRELEASE');
+      ResponseFileContent.Add('-$D0');  // No debug info
+      ResponseFileContent.Add('-$O+');  // Optimization
+    end;
+    //ResponseFileContent.Add('-E.\Win32\Release');
+    ResponseFileContent.Add('-E' + edtOutputExe.Text);
     // INCLUDE PATHS (-I) - Solo para archivos .inc
     if FDelphiPaths.IncludePaths <> '' then
     begin
-      var IncludeArray := CleanDuplicatePaths(FDelphiPaths.IncludePaths).Split([';']);
+      var IncludeArray := CleanDuplicatePaths(
+                                        FDelphiPaths.IncludePaths).Split([';']);
       for var IncPath in IncludeArray do
         if Trim(IncPath) <> '' then
           ResponseFileContent.Add('-I' + IncPath);
     end;
-    ResponseFileContent.Add('-LEC:\Users\Public\Documents\Embarcadero\Studio\20.0\Bpl');
-    ResponseFileContent.Add('-LNC:\Users\Public\Documents\Embarcadero\Studio\20.0\Dcp');
-    ResponseFileContent.Add('-NU.\Win32\Release');
-    ResponseFileContent.Add('-NSWinapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;');
+    //ResponseFileContent.Add('-LEC:\Users\Public\Documents\Embarcadero\Studio\20.0\Bpl');
+    ResponseFileContent.Add('-LE'+
+                        IncludeTrailingPathDelimiter(edtCommonPath.Text)+'Bpl');
+    ResponseFileContent.Add('-LN'+
+                        IncludeTrailingPathDelimiter(edtCommonPath.Text)+'Dcp');
+    if ContainsText(edtOutputExe.Text, '.\') then
+         ForceDirectories(IncludeTrailingPathDelimiter(ProjectDir) +
+                         Format('%s\%s\dcu',[edtPlatForm.Text, edtConfig.Text]))
+    else
+      ForceDirectories(IncludeTrailingPathDelimiter(edtOutputExe.Text) + 'dcu');
+    PathDcu := '-NU' + edtOutputExe.Text +'\'+ 'dcu';
+    ResponseFileContent.Add(PathDcu);
+    ResponseFileContent.Add('-NSWinapi;System.Win;Data.Win;Datasnap.Win;' +
+                            'Web.Win;Soap.Win;Xml.Win;Bde;System;Xml;Data;'+
+                            'Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;'+
+                            'Vcl.Samples;Vcl.Shell;');
     // RESOURCE PATHS (-R) - Para archivos .res como JvConsts.res
     if FDelphiPaths.ResourcePaths <> '' then
     begin
-      var ResourceArray := CleanDuplicatePaths(FDelphiPaths.ResourcePaths).Split([';']);
+      var ResourceArray :=
+                   CleanDuplicatePaths(FDelphiPaths.ResourcePaths).Split([';']);
       for var ResPath in ResourceArray do
         if Trim(ResPath) <> '' then
           ResponseFileContent.Add('-R' + ResPath);
@@ -1181,19 +1285,29 @@ begin
         if Trim(UnitPath) <> '' then
           ResponseFileContent.Add('-U' + UnitPath);
     end;
-    ResponseFileContent.Add('-NBC:\Users\Public\Documents\Embarcadero\Studio\20.0\Dcp');
-    ResponseFileContent.Add('-NHC:\Users\Public\Documents\Embarcadero\Studio\20.0\hpp\Win32');
-    ResponseFileContent.Add('-NO.\Win32\Release');
+    ResponseFileContent.Add('-NB'+
+                        IncludeTrailingPathDelimiter(edtCommonPath.Text)+'Dcp');
+    ResponseFileContent.Add('-NH'+
+      IncludeTrailingPathDelimiter(edtCommonPath.Text) +
+                                          Format('hpp\%s', [edtPlatForm.Text]));
+    ResponseFileContent.Add(Format('-NO.\%s\%s',
+                                            [edtPlatForm.Text, edtConfig.text]));
     ResponseFileContent.Add('"' + ProjectName + '"');
     // Guardar archivo de respuesta
     ResponseFileContent.SaveToFile(ResponseFile);
     LogMessage('Archivo de respuesta creado: ' + ResponseFile);
-    LogMessage('Total líneas en archivo de respuesta: ' + IntToStr(ResponseFileContent.Count));
+    LogMessage('Total líneas en archivo de respuesta: ' +
+                                           IntToStr(ResponseFileContent.Count));
     // Comando usando archivo de respuesta
-    Command := '"' + DelphiBin + '\dcc32.exe" @"' + ResponseFile + '"';
+    Command := '"' + DelphiBin + '\'+edtCompilerName.Text+
+                                                    '" @"' + ResponseFile + '"';
     LogMessage('Comando: ' + Command);
     m1.Lines.Add('Ejecutando compilación...');
-    ForceDirectories(ProjectDir + '\Win32\Release');
+    if ContainsText(edtOutputExe.Text, '.\')  then
+      ForceDirectories(ProjectDir + Format('%s\%s',
+                                            [edtPlatForm.Text, edtConfig.Text]))
+    else
+      ForceDirectories(edtOutputExe.Text);
     try
       Result := ExecuteCommand2(Command, ProjectDir);
       if Result then

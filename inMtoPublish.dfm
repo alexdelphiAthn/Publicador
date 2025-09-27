@@ -27,6 +27,13 @@ object frmPublish: TfrmPublish
     ExplicitTop = 0
     ExplicitWidth = 431
   end
+  object lbl222: TLabel
+    Left = 29
+    Top = 208
+    Width = 118
+    Height = 21
+    Caption = 'Delphi Base Path:'
+  end
   object m1: TMemo
     Left = 0
     Top = 431
@@ -333,6 +340,62 @@ object frmPublish: TfrmPublish
           Height = 21
           Caption = 'inLibVarGlob.pas:'
         end
+        object lbl22: TLabel
+          Left = 25
+          Top = 120
+          Width = 118
+          Height = 21
+          Caption = 'Delphi Base Path:'
+        end
+        object lbl221: TLabel
+          Left = 41
+          Top = 154
+          Width = 102
+          Height = 21
+          Caption = 'Common Path:'
+        end
+        object lbl223: TLabel
+          Left = 58
+          Top = 190
+          Width = 85
+          Height = 21
+          Caption = 'Compilador:'
+        end
+        object lbl224: TLabel
+          Left = 239
+          Top = 189
+          Width = 55
+          Height = 21
+          Caption = 'Versi'#243'n:'
+        end
+        object lbl225: TLabel
+          Left = 380
+          Top = 189
+          Width = 79
+          Height = 21
+          Caption = 'Plataforma:'
+        end
+        object lbl226: TLabel
+          Left = 549
+          Top = 189
+          Width = 101
+          Height = 21
+          Caption = 'Configuraci'#243'n:'
+        end
+        object lbl2211: TLabel
+          Left = 83
+          Top = 225
+          Width = 60
+          Height = 21
+          Caption = 'Exe Path:'
+        end
+        object lbl22111: TLabel
+          Left = 22
+          Top = 257
+          Width = 163
+          Height = 21
+          Caption = 'Par'#225'metros adicionales:'
+        end
         object edtVersion: TEdit
           Left = 152
           Top = 22
@@ -374,9 +437,9 @@ object frmPublish: TfrmPublish
           OnClick = btnSelectLibVarGlobClick
         end
         object btnCompile: TButton
-          Left = 80
-          Top = 208
-          Width = 449
+          Left = 616
+          Top = 288
+          Width = 217
           Height = 25
           Caption = 'COMPILAR Y CONSTRUIR EXE RELEASE'
           Font.Charset = DEFAULT_CHARSET
@@ -412,6 +475,69 @@ object frmPublish: TfrmPublish
           Checked = True
           State = cbChecked
           TabOrder = 7
+        end
+        object edtBasePath: TEdit
+          Left = 152
+          Top = 118
+          Width = 400
+          Height = 29
+          TabOrder = 8
+          Text = 'c:\program files (x86)\embarcadero\studio\20.0'
+        end
+        object edtCommonPath: TEdit
+          Left = 152
+          Top = 151
+          Width = 405
+          Height = 29
+          TabOrder = 9
+          Text = 'C:\Users\Public\Documents\Embarcadero\Studio\20.0'
+        end
+        object edtPlatForm: TEdit
+          Left = 465
+          Top = 187
+          Width = 74
+          Height = 29
+          TabOrder = 10
+          Text = 'Win32'
+        end
+        object edtConfig: TEdit
+          Left = 656
+          Top = 186
+          Width = 65
+          Height = 29
+          TabOrder = 11
+          Text = 'Release'
+        end
+        object edtOutputExe: TEdit
+          Left = 152
+          Top = 222
+          Width = 405
+          Height = 29
+          TabOrder = 12
+          Text = '.\Win32\Release'
+        end
+        object edtParamAdd: TEdit
+          Left = 191
+          Top = 257
+          Width = 366
+          Height = 29
+          TabOrder = 13
+        end
+        object edtCompilerName: TEdit
+          Left = 152
+          Top = 187
+          Width = 74
+          Height = 29
+          TabOrder = 14
+          Text = 'dcc32'
+        end
+        object edtVersionDelphi: TEdit
+          Left = 300
+          Top = 187
+          Width = 74
+          Height = 29
+          TabOrder = 15
+          Text = '20.0'
         end
       end
     end
