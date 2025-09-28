@@ -607,19 +607,19 @@ begin
   end;
 
   // Mostrar estadísticas
-  M1.Lines.Add('');
-  M1.Lines.Add('ESTADÍSTICAS DEL ARCHIVO:');
-  M1.Lines.Add(StringOfChar('=', 40));
-  M1.Lines.Add('Archivos: ' + IntToStr(TotalFiles));
-  M1.Lines.Add('Carpetas: ' + IntToStr(TotalFolders));
-  M1.Lines.Add('Tamaño original total: ' + FormatFileSize(TotalOriginalSize));
-  M1.Lines.Add('Tamaño comprimido total: ' + FormatFileSize(TotalCompressedSize));
+  LogMessage('');
+  LogMessage('ESTADÍSTICAS DEL ARCHIVO:');
+  LogMessage(StringOfChar('=', 40));
+  LogMessage('Archivos: ' + IntToStr(TotalFiles));
+  LogMessage('Carpetas: ' + IntToStr(TotalFolders));
+  LogMessage('Tamaño original total: ' + FormatFileSize(TotalOriginalSize));
+  LogMessage('Tamaño comprimido total: ' + FormatFileSize(TotalCompressedSize));
 
   if TotalOriginalSize > 0 then
   begin
     CompressionRatio := ((TotalOriginalSize - TotalCompressedSize) / TotalOriginalSize) * 100;
-    M1.Lines.Add('Ratio de compresión: ' + FormatFloat('0.0', CompressionRatio) + '%');
-    M1.Lines.Add('Factor de compresión: ' + FormatFloat('0.0', TotalOriginalSize / TotalCompressedSize) + ':1');
+    LogMessage('Ratio de compresión: ' + FormatFloat('0.0', CompressionRatio) + '%');
+    LogMessage('Factor de compresión: ' + FormatFloat('0.0', TotalOriginalSize / TotalCompressedSize) + ':1');
   end;
 end;
 
@@ -792,9 +792,9 @@ begin
   else
   begin
     M1.Lines.Clear;
-    M1.Lines.Add('CONTENIDO DEL ARCHIVO: ' + ExtractFileName(edtDestino.Text) + ' (ORDENADO ALFABÉTICAMENTE)');
-    M1.Lines.Add(StringOfChar('=', 110));
-    M1.Lines.Add('');
+    LogMessage('CONTENIDO DEL ARCHIVO: ' + ExtractFileName(edtDestino.Text) + ' (ORDENADO ALFABÉTICAMENTE)');
+    LogMessage(StringOfChar('=', 110));
+    LogMessage('');
 
     try
       Arch := CreateInArchive(CLSID_CFormat7z);
@@ -847,11 +847,11 @@ begin
       SortFileItems(FileItems, Arch.NumberOfItems);
 
       // MOSTRAR el listado ordenado
-      M1.Lines.Add('Número total de elementos: ' + IntToStr(Arch.NumberOfItems));
-      M1.Lines.Add('');
-      M1.Lines.Add(Format('%-40s %12s %16s',
+      LogMessage('Número total de elementos: ' + IntToStr(Arch.NumberOfItems));
+      LogMessage('');
+      LogMessage(Format('%-40s %12s %16s',
         ['NOMBRE', 'TAMAÑO','MODIFICADO']));
-      M1.Lines.Add(StringOfChar('-', 80));
+      LogMessage(StringOfChar('-', 80));
 
       for I := 0 to Arch.NumberOfItems - 1 do
       begin
@@ -869,53 +869,52 @@ begin
         // Mostrar información del elemento
         if FileItem.IsFolder then
         begin
-          M1.Lines.Add(Format('%s[%s]%s %12s %16s',
+          LogMessage(Format('%s[%s]%s %12s %16s',
             [Indent, Copy(FileItem.Name, 1, 35-Length(Indent)),
              StringOfChar(' ', 35-Length(Indent)-Length(FileItem.Name)),
              SizeStr, FileItem.ModificationDate]));
         end
         else
         begin
-          M1.Lines.Add(Format('%s%s%s %12s %16s',
+          LogMessage(Format('%s%s%s %12s %16s',
             [Indent, Copy(FileItem.Name, 1, 35-Length(Indent)),
              StringOfChar(' ', 35-Length(Indent)-Length(FileItem.Name)),
              SizeStr, FileItem.ModificationDate]));
         end;
       end;
 
-      M1.Lines.Add(StringOfChar('-', 80));
+      LogMessage(StringOfChar('-', 80));
 
       // Mostrar estadísticas finales
-      M1.Lines.Add('');
-      M1.Lines.Add('ESTADÍSTICAS DEL ARCHIVO:');
-      M1.Lines.Add(StringOfChar('=', 40));
-      M1.Lines.Add('Archivos: ' + IntToStr(TotalFiles));
-      M1.Lines.Add('Carpetas: ' + IntToStr(TotalFolders));
-      M1.Lines.Add('Tamaño original total: ' + FormatFileSize(TotalOriginalSize));
+      LogMessage('');
+      LogMessage('ESTADÍSTICAS DEL ARCHIVO:');
+      LogMessage(StringOfChar('=', 40));
+      LogMessage('Archivos: ' + IntToStr(TotalFiles));
+      LogMessage('Carpetas: ' + IntToStr(TotalFolders));
+      LogMessage('Tamaño original total: ' + FormatFileSize(TotalOriginalSize));
 
       if TotalCompressedSize > 0 then
       begin
-        M1.Lines.Add('Tamaño comprimido total: ' + FormatFileSize(TotalCompressedSize));
+        LogMessage('Tamaño comprimido total: ' + FormatFileSize(TotalCompressedSize));
         if TotalOriginalSize > 0 then
         begin
           var OverallRatio := ((TotalOriginalSize - TotalCompressedSize) / TotalOriginalSize) * 100;
-          M1.Lines.Add('Ratio de compresión: ' + FormatFloat('0.0', OverallRatio) + '%');
+          LogMessage('Ratio de compresión: ' + FormatFloat('0.0', OverallRatio) + '%');
           if TotalCompressedSize > 0 then
-            M1.Lines.Add('Factor de compresión: ' + FormatFloat('0.0', TotalOriginalSize / TotalCompressedSize) + ':1');
+            LogMessage('Factor de compresión: ' + FormatFloat('0.0', TotalOriginalSize / TotalCompressedSize) + ':1');
         end;
       end
       else
       begin
-        M1.Lines.Add('Tamaño comprimido: No disponible individualmente');
+        LogMessage('Tamaño comprimido: No disponible individualmente');
       end;
 
-      M1.Lines.Add('');
-      M1.Lines.Add('Listado completado exitosamente (ordenado alfabéticamente)');
+      LogMessage('');
+      LogMessage('Listado completado exitosamente (ordenado alfabéticamente)');
 
     except
       on E:Exception do
       begin
-        M1.Lines.Add(Format('ERROR: [%s] %s', [E.ClassName, E.Message]));
         LogMessage('Error al listar contenido del archivo: ' + E.Message);
       end;
     end;
@@ -953,20 +952,20 @@ begin
       if IsValidExtension(Archivo) then
       begin
         aFiles.Add(Archivo);
-        M1.Lines.Add('Archivo: ' + Archivo);
+        LogMessage('Archivo: ' + Archivo);
       end;
     end;
     // Obtener todas las subcarpetas
     Carpetas := TDirectory.GetDirectories(CarpetaRaiz);
     for Carpeta in Carpetas do
     begin
-      M1.Lines.Add('Carpeta: ' + Carpeta);
+      LogMessage('Carpeta: ' + Carpeta);
       // Llamada recursiva para procesar subcarpetas
       RecorrerCarpetasConTDirectory(Carpeta);
     end;
   except
     on E: Exception do
-      M1.Lines.Add('Error: ' + E.Message);
+      LogMessage('Error: ' + E.Message);
   end;
 end;
 
@@ -974,7 +973,7 @@ procedure TfrmPublish.sFtpClientVerifyServer(Sender: TObject; const AHost, AKeyT
   AFingerPrint, AHostKey: string; var AVerified: Boolean);
 begin
   AVerified := True;
-  m1.Lines.Add('Servidor: ' + AHost + ' - Fingerprint: ' + AFingerPrint);
+  LogMessage('Servidor: ' + AHost + ' - Fingerprint: ' + AFingerPrint);
 end;
 
 procedure TfrmPublish.btnComprimirClick(Sender: TObject);
@@ -1008,18 +1007,17 @@ begin
       // Convertir \ a / (opcional pero recomendado)
       RutaRelativa := StringReplace(RutaRelativa, '\', '/', [rfReplaceAll]);
       Arch.AddFile(AFileName, RutaRelativa);
-      M1.Lines.Add(AFileName);
+      LogMessage(AFileName);
       M1.Update;
     end;
-    M1.Lines.Add(StringOfChar('=', 30));
-    M1.Lines.Add('Finalizado');
+    LogMessage(StringOfChar('=', 30));
+    LogMessage('Finalizado');
     Arch.SaveToFile(edtDestino.Text);
 //  end;
 end;
 
 procedure TfrmPublish.btnComprimirEClick(Sender: TObject);
 var
-
   ExeFolder, ProjectName, ExeFileName, CompressedFileName: string;
   ExeSourcePath, ExeDestPath: string;
   Arch: I7zOutArchive;
@@ -1172,11 +1170,11 @@ end;
 
 procedure TfrmPublish.btnAnalizarClick(Sender: TObject);
 begin
-  m1.Lines.Add('Resultado inicial...');
+  LogMessage('Resultado inicial...');
 
   var ResultSummary := GetAnalysisResult(edtAnalisisId.Text);
   if ResultSummary <> '' then
-    m1.Lines.Add('Resultado: ' + ResultSummary);
+    LogMessage('Resultado: ' + ResultSummary);
 end;
 
 procedure TfrmPublish.btnDeleteExeClick(Sender: TObject);
@@ -1211,14 +1209,14 @@ begin
       // Conectar al servidor
       SftpClient.Open;
       m1.Lines.Clear;
-      m1.Lines.Add('Conectado al servidor SFTP');
+      LogMessage('Conectado al servidor SFTP');
       // Cambiar al directorio remoto donde quieres subir el archivo (opcional)
       if ((edtCarpetaRemota.Text <> '') or (edtCarpetaRemota.Text <> '/')) then
         SftpClient.ChangeCurrentDir(edtCarpetaRemota.Text);
       // Enviar el archivo
       sNameFile := ExtractFileName(edtDestino.Text);
       SftpClient.PutFile(edtDestino.Text, sNameFile);
-      m1.Lines.Add('Archivo '+sNameFile+' enviado correctamente');
+      LogMessage('Archivo '+sNameFile+' enviado correctamente');
     except
       on E: Exception do
       begin
@@ -1262,6 +1260,7 @@ end;
 
 procedure TfrmPublish.btnSelectProjectClick(Sender: TObject);
 begin
+  dlgOpenPoject.Filter := 'Proyecto Delphi dpr (*.dpr)|*.dpr';
   if dlgOpenPoject.Execute() then
     edtProjectPath.Text := dlgOpenPoject.FileName;
 end;
@@ -1739,7 +1738,7 @@ begin
     Command := '"' + DelphiBin + '\'+edtCompilerName.Text+
                                                     '" @"' + ResponseFile + '"';
     LogMessage('Comando: ' + Command);
-    m1.Lines.Add('Ejecutando compilación...');
+    LogMessage('Ejecutando compilación...');
     if ContainsText(edtOutputExe.Text, '.\')  then
       ForceDirectories(ProjectDir + Format('%s\%s',
                                             [edtPlatForm.Text, edtConfig.Text]))
@@ -1772,52 +1771,52 @@ begin
   // Validar campos
   if not FileExists(edtProjectPath.Text) then
   begin
-    m1.Lines.Add('Seleccione un archivo de proyecto válido (.dpr)');
+    LogMessage('Seleccione un archivo de proyecto válido (.dpr)');
     Exit;
   end;
   if chkVersionarVariable.Checked = False then
     if not FileExists(edtLibVarGlobPath.Text) then
     begin
-      m1.Lines.Add('Seleccione el archivo inLibVarGlob.pas');
+      LogMessage('Seleccione el archivo inLibVarGlob.pas');
       Exit;
     end;
   btnCompile.Enabled := False;
   try
     NewVersion := edtVersion.Text;
-    m1.Lines.Add('=== INICIANDO COMPILACIÓN ===');
+    LogMessage('=== INICIANDO COMPILACIÓN ===');
     // Paso 1: Actualizar versión en el archivo
 //    ProgressBar1.Position := 25;
     if chkVersionarVariable.Checked = False then
       if not UpdateVersionInFile(edtLibVarGlobPath.Text, NewVersion) then
       begin
-        m1.Lines.Add('ERROR: No se pudo actualizar la versión');
+        LogMessage('ERROR: No se pudo actualizar la versión');
         Exit;
       end
       else
       begin
-        m1.Lines.Add('Actualizando versión en ' + ExtractFileName(edtLibVarGlobPath.Text));
-        m1.Lines.Add('Versión actualizada correctamente');
-        m1.Lines.Add('Nueva versión: ' + NewVersion);
+        LogMessage('Actualizando versión en ' + ExtractFileName(edtLibVarGlobPath.Text));
+        LogMessage('Versión actualizada correctamente');
+        LogMessage('Nueva versión: ' + NewVersion);
       end;
     // Paso 2: Compilar proyecto
 //    ProgressBar1.Position := 50;
-    m1.Lines.Add('Iniciando compilación del proyecto...');
+    LogMessage('Iniciando compilación del proyecto...');
     if CompileProject then
     begin
-      m1.Lines.Add('=== COMPILACIÓN EXITOSA ===');
+      LogMessage('=== COMPILACIÓN EXITOSA ===');
       // Paso 3: Enviar a VirusTotal si está habilitado
 //      if chkSendToVirusTotal.Checked then
 //      begin
 //        EnviarVirusTotal;
 //      end;
 //      ProgressBar1.Position := 100;
-      m1.Lines.Add('Proceso completado exitosamente!' + #13#10 +
+      LogMessage('Proceso completado exitosamente!' + #13#10 +
                   'Versión: ' + NewVersion);
     end
     else
     begin
-      m1.Lines.Add('ERROR: Fallo en la compilación');
-      m1.Lines.Add('Error en la compilación. Revise el log.');
+      LogMessage('ERROR: Fallo en la compilación');
+      LogMessage('Error en la compilación. Revise el log.');
     end;
   finally
 //    ProgressBar1.Visible := False;
@@ -1830,10 +1829,10 @@ var
   ExeFile, OutputExe:string;
 begin
   //        ProgressBar1.Position := 85;
-  m1.Lines.Add('Enviando a VirusTotal...');
+  LogMessage('Enviando a VirusTotal...');
   if Trim(edtVirusTotalAPIKey.Text) = '' then
   begin
-    m1.Lines.Add('ADVERTENCIA: No se proporcionó API Key de VirusTotal');
+    LogMessage('ADVERTENCIA: No se proporcionó API Key de VirusTotal');
   end
   else
   begin
@@ -1843,13 +1842,13 @@ begin
     if FileExists(OutputExe) then
     begin
       if SendToVirusTotal(OutputExe) then
-        m1.Lines.Add('Archivo enviado a VirusTotal correctamente')
+        LogMessage('Archivo enviado a VirusTotal correctamente')
       else
-        m1.Lines.Add('ERROR: Fallo al enviar a VirusTotal');
+        LogMessage('ERROR: Fallo al enviar a VirusTotal');
     end
     else
     begin
-      m1.Lines.Add('ERROR: No se encontró el ejecutable compilado: ' + OutputExe);
+      LogMessage('ERROR: No se encontró el ejecutable compilado: ' + OutputExe);
     end;
   end;
 end;
@@ -2056,12 +2055,12 @@ begin
       end
       else
       begin
-        m1.Lines.Add('ERROR HTTP al obtener resultado: ' + IntToStr(Response.StatusCode));
+        LogMessage('ERROR HTTP al obtener resultado: ' + IntToStr(Response.StatusCode));
       end;
     except
       on E: Exception do
       begin
-        m1.Lines.Add('ERROR al obtener resultado: ' + E.Message);
+        LogMessage('ERROR al obtener resultado: ' + E.Message);
       end;
     end;
   finally

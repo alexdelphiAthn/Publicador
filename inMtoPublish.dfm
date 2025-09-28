@@ -2,7 +2,7 @@ object frmPublish: TfrmPublish
   Left = 0
   Top = 0
   Caption = 'Publicaci'#243'n de ejecutables y c'#243'digo fuente'
-  ClientHeight = 536
+  ClientHeight = 622
   ClientWidth = 1071
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -16,7 +16,7 @@ object frmPublish: TfrmPublish
   TextHeight = 21
   object spl1: TSplitter
     Left = 0
-    Top = 358
+    Top = 356
     Width = 1071
     Height = 3
     Cursor = crVSplit
@@ -36,9 +36,9 @@ object frmPublish: TfrmPublish
   end
   object m1: TMemo
     Left = 0
-    Top = 361
+    Top = 359
     Width = 1071
-    Height = 175
+    Height = 263
     Align = alBottom
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -50,14 +50,12 @@ object frmPublish: TfrmPublish
     ParentFont = False
     ScrollBars = ssVertical
     TabOrder = 0
-    ExplicitTop = 360
-    ExplicitWidth = 1067
   end
   object jpcPestanas: TJvgPageControl
     Left = 0
     Top = 0
     Width = 1071
-    Height = 358
+    Height = 356
     ActivePage = tsCompilacion
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
@@ -94,8 +92,7 @@ object frmPublish: TfrmPublish
     TabSelectedStyle.Gradient.Active = False
     TabSelectedStyle.Gradient.Orientation = fgdHorizontal
     Options = [ftoAutoFontDirection, ftoExcludeGlyphs]
-    ExplicitWidth = 1067
-    ExplicitHeight = 357
+    ExplicitHeight = 444
     object tsFicheros: TTabSheet
       Caption = 'Ficheros C'#243'digo Fuente'
       object lblOrigen: TLabel
@@ -591,9 +588,6 @@ object frmPublish: TfrmPublish
         Font.Name = 'Segoe UI'
         Font.Style = []
         ItemHeight = 13
-        Items.Strings = (
-          'C:\DISCO DURO\proyectos\subocasoft\script_109.sql'
-          'C:\DISCO DURO\proyectos\subocasoft\SUBOCASOFT VERSION 109.docx')
         ParentFont = False
         TabOrder = 1
       end
@@ -797,7 +791,6 @@ object frmPublish: TfrmPublish
     Top = 560
   end
   object dlgOpenPoject: TJvOpenDialog
-    Filter = 'Proyecto Delphi dpr (*.dpr)|*.dpr'
     Options = [ofReadOnly, ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
     Height = 0
     Width = 0
