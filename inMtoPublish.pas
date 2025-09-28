@@ -203,6 +203,9 @@ var
 
 implementation
 
+uses
+  inLibLog;
+
 {$R *.dfm}
 {$R recursos.res}
 
@@ -225,7 +228,6 @@ begin
       if DeleteFile(ProfileFile) then
       begin
         LogMessage('Perfil eliminado: ' + ProfileName);
-
         // Si estamos usando el perfil que se está borrando, cambiar a por defecto
         if sCurrentProfile = ProfileName then
         begin
@@ -1069,11 +1071,12 @@ begin
       if FileExists(SourceFile) then
       begin
         DestFile := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
-                                                    ExtractFileName(SourceFile);
-        if CopyFile(PChar(SourceFile), PChar(DestFile), False) then
-          LogMessage('✓ Copiado: ' + ExtractFileName(SourceFile))
-        else
-          LogMessage('✗ Error copiando: ' + ExtractFileName(SourceFile));
+                                                 ExtractFileName(SourceFile);
+        if not SameText(SourceFile, DestFile) then
+          if CopyFile(PChar(SourceFile), PChar(DestFile), False) then
+            LogMessage('✓ Copiado: ' + ExtractFileName(SourceFile))
+          else
+            LogMessage('✗ Error copiando: ' + ExtractFileName(SourceFile));
       end
       else
         LogMessage('✗ No existe: ' + SourceFile);
@@ -1347,7 +1350,6 @@ var
   AppName: string;
 begin
   AppName := TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0)));
-
   if sCurrentProfile <> '' then
     sIniFile := ExtractFilePath(ParamStr(0)) +
                                         AppName + '_' + sCurrentProfile + '.ini'
@@ -1376,7 +1378,7 @@ begin
   sVersion     := leCadIni('Compilation', 'Version', '109');
   sProjFile    := leCadINI('Compilation', 'ProjectFile', 'c:\MyProject');
   sGlobFile    := leCadINI('Compilation', 'LibGlobFile', '');
-  sVirusTotalAPI := leCadINI('Other', 'APIVirusTotal', '000000000000000000');
+  sVirusTotalAPI := leCadINI('Other', 'VirusTotalAPI', '000000000000000000');
    //Leer extensiones del INI (guardadas como string separado por comas)
   extensiones := leCadIni('Files', 'Extensions', '*.exe,*.dll,*.txt');
    //Cargar extensiones en el ListBox
@@ -1396,19 +1398,21 @@ begin
   sAnalisisID := leCadIni('PublishExe', 'AnalisisID', '');
   // Leer archivos adicionales del exe (similar a extensiones)
   var filesExe := leCadIni('PublishExe', 'FilesExe', '');
-
   // Cargar archivos adicionales en el ListBox
   lstFilesExe.Items.Clear;
   if filesExe <> '' then
   begin
     lstFilesExe.Items.StrictDelimiter := True;
+    lstFilesExe.Items.Delimiter := ',';
     lstFilesExe.Items.QuoteChar := '"';  // Reconocer comillas
     lstFilesExe.Items.CommaText := filesExe;
   end;
 end;
+
 procedure TfrmPublish.LogMessage(const Msg: string);
 begin
   m1.Lines.Add(Msg);
+  Log.LogInfo(Msg);
 end;
 
 procedure TfrmPublish.InitControls;
@@ -1535,7 +1539,7 @@ begin
   esCadINI('Compilation', 'Version',        sVersion);
   esCadINI('Compilation', 'ProjectFile',    sProjFile);
   esCadINI('Compilation', 'LibGlobFile',    sGlobFile);
-  esCadINI('Other', 'APIVirusTotal', sVirusTotalAPI);
+  esCadINI('Other', 'VirusTotalAPI', sVirusTotalAPI);
   //compiler
   esCadIni('Compiler', 'DelphiBasePath',      sDelphiBasePath);
   esCadIni('Compiler', 'DelphiCommonPath',    sDelphiCommonPath);
@@ -1548,16 +1552,23 @@ begin
 
   sExeDestPath := edtExeDestPath.Text;
   sAnalisisID := edtAnalisisID.Text;
-
   // Convertir lista de archivos exe a string separado por comas
-var filesExe := '';
-for i := 0 to lstFilesExe.Items.Count - 1 do
-begin
-  if (i > 0) then
-    filesExe := filesExe + ',';
-  // Forzar comillas para rutas con espacios
-  filesExe := filesExe + '"' + lstFilesExe.Items[i] + '"';
-end;
+  var filesExe := '';
+//  var sFile:String;
+  for i := 0 to lstFilesExe.Items.Count - 1 do
+  begin
+    if i > 0 then
+      filesExe := filesExe + ',';
+
+    var item := lstFilesExe.Items[i];
+
+    // Si el elemento ya tiene comillas, usarlo tal como está
+    // Si no las tiene pero contiene espacios, añadir comillas
+    if (Pos(' ', item) > 0) and (item[1] <> '"') then
+      filesExe := filesExe + '"' + item + '"'
+    else
+      filesExe := filesExe + item;
+  end;
   // Agregar estas nuevas entradas:
   esCadIni('PublishExe', 'ExeDestPath', sExeDestPath);
   esCadIni('PublishExe', 'AnalisisID', sAnalisisID);
@@ -1840,7 +1851,7 @@ end;
 
 procedure TfrmPublish.EnviarVirusTotal;
 var
-  ExeFile, OutputExe:string;
+  ProjectName, CompressedFileName:string;
 begin
   //        ProgressBar1.Position := 85;
   LogMessage('Enviando a VirusTotal...');
@@ -1850,19 +1861,20 @@ begin
   end
   else
   begin
-    ExeFile := ChangeFileExt(edtProjectPath.Text, '.exe');
-    OutputExe := ExtractFilePath(edtProjectPath.Text) +
-                              'Win32\Release\' + ExtractFileName(ExeFile);
-    if FileExists(OutputExe) then
+    ProjectName := TPath.GetFileNameWithoutExtension(edtProjectPath.Text);
+    CompressedFileName := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
+                          ProjectName + '_' + edtVersion.Text + '.7z';
+    if FileExists(CompressedFileName) then
     begin
-      if SendToVirusTotal(OutputExe) then
+      if SendToVirusTotal(CompressedFileName) then
         LogMessage('Archivo enviado a VirusTotal correctamente')
       else
         LogMessage('ERROR: Fallo al enviar a VirusTotal');
     end
     else
     begin
-      LogMessage('ERROR: No se encontró el ejecutable compilado: ' + OutputExe);
+      LogMessage('ERROR: No se encontró el ejecutable comprimido: ' +
+                                                            CompressedFileName);
     end;
   end;
 end;
@@ -1979,10 +1991,11 @@ begin
             begin
               if DataObj.TryGetValue('id', AnalysisID) then
               begin
+                edtAnalisisID.Text := AnalysisID;
                 LogMessage('ID de análisis: ' + AnalysisID);
                 LogMessage('URL del análisis: https://www.virustotal.com/gui/file-analysis/' + AnalysisID);
                 // Esperar un momento y obtener resultado inicial
-                ForceFileAnalysis(AnalysisID);
+//                ForceFileAnalysis(AnalysisID);
                 Result := True;
               end
               else
