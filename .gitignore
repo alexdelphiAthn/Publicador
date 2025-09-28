@@ -16,7 +16,7 @@ __recovery/
 Win32/
 Win64/
 .git
-
+.~dsk
 # Configuración sensible (MySQL, etc.)
 config.ini
 database.cfg
