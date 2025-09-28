@@ -10,7 +10,7 @@ uses
   clSFtp, sevenzip, System.IniFiles, Vcl.ComCtrls, JvgPage, System.Net.URLClient,
   System.IOUtils, System.StrUtils, System.DateUtils, System.Net.HttpClient,
   System.Net.HttpClientComponent, System.JSON, JvDialogs, clTcpClientSsh,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls, JvExStdCtrls, JvCombobox;
 
 type
   TDelphiPaths = record
@@ -76,11 +76,11 @@ type
     edtPassFTP: TEdit;
     btnEnviarFTP: TButton;
     tsPublicarExe: TTabSheet;
-    edtExtension1: TEdit;
-    lstExtensiones1: TListBox;
-    btnAddExt1: TButton;
-    btnDeleteExt1: TButton;
-    btnSelectProject1: TButton;
+    edtAddExe: TEdit;
+    lstFilesExe: TListBox;
+    btnAddExe: TButton;
+    btnDeleteExe: TButton;
+    btnSelectFileAdd: TButton;
     edtExtension: TEdit;
     lstExtensiones: TListBox;
     btnAddExt: TButton;
@@ -88,9 +88,9 @@ type
     lblExtensiones: TLabel;
     spl1: TSplitter;
     lbl5: TLabel;
-    edtProjectPath1: TEdit;
+    edtExeDestPath: TEdit;
     lbl21: TLabel;
-    btnSelectProject2: TButton;
+    btnSelectFolderCopyExe: TButton;
     btnComprimirExe: TButton;
     chkSendToVirusTotal: TCheckBox;
     edtVirusTotalAPIKey: TEdit;
@@ -116,6 +116,15 @@ type
     edtParamAdd: TEdit;
     edtCompilerName: TEdit;
     edtVersionDelphi: TEdit;
+    tsPerfiles: TTabSheet;
+    cmbPerfiles: TJvComboBox;
+    lbl6: TLabel;
+    lblPerfilActual: TLabel;
+    btnNuevoPerfil: TButton;
+    btnBorrarPerfil: TButton;
+    btnUsarPerfil: TButton;
+    procedure btnBorrarPerfilClick(Sender: TObject);
+    procedure btnNuevoPerfilClick(Sender: TObject);
     procedure btnCheckClick(Sender: TObject);
     procedure btnComprimirClick(Sender: TObject);
     procedure btnOrigenClick(Sender: TObject);
@@ -134,9 +143,17 @@ type
     procedure btnAnalizarClick(Sender: TObject);
     procedure btnSelectLibVarGlobClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure btnUsarPerfilClick(Sender: TObject);
+    procedure btnAddExeClick(Sender: TObject);
+    procedure btnDeleteExeClick(Sender: TObject);
+    procedure btnSelectFileAddClick(Sender: TObject);
+    procedure btnSelectFolderCopyExeClick(Sender: TObject);
+    procedure btnComprimirEClick(Sender: TObject);
   private
-    sOrigen, sDestino, sPassword, sServer, sServerPort,
-    sFolderDest, sUserFtp, sPassFtp, sVersion, sProjFile, sGlobFile:string;
+    sCurrentProfile:string;
+    sOrigen, sDestino, sPassword, sServer, sServerPort, sExeDestPath,
+    sAnalisisID, sFolderDest, sUserFtp, sPassFtp, sVersion, sProjFile,
+    sGlobFile:string;
     sVirusTotalAPI : string;
     aFiles:TStringList;
     sDelphiBasePath: string;      // C:\Program Files (x86)\Embarcadero\Studio\20.0
@@ -173,10 +190,12 @@ type
     function ReadCompleteDelphiPaths(const DelphiVersion: string): TDelphiPaths;
     function CleanDuplicatePaths(const PathsString: string): string;
     procedure ProcessOutputLine(const Text: string);
+    procedure UpdateProfileCombo;
+    procedure UpdateButtonStates;
+    procedure InitProfile;
   private
     FDelphiPaths: TDelphiPaths;
     F7zDLLHandle: THandle;
-
   end;
 
 var
@@ -186,6 +205,147 @@ implementation
 
 {$R *.dfm}
 {$R recursos.res}
+
+procedure TfrmPublish.btnBorrarPerfilClick(Sender: TObject);
+var
+  ProfileName, AppName, ProfileFile: string;
+begin
+  if cmbPerfiles.ItemIndex < 0 then
+    Exit;
+  ProfileName := cmbPerfiles.Text;
+  if MessageDlg('¿Está seguro de eliminar el perfil "' + ProfileName + '"?' + #13#10 +
+                'Esta acción no se puede deshacer.',
+                mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+  begin
+    AppName := TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0)));
+    ProfileFile := ExtractFilePath(ParamStr(0)) + AppName + '_' +
+                                                           ProfileName + '.ini';
+    if FileExists(ProfileFile) then
+    begin
+      if DeleteFile(ProfileFile) then
+      begin
+        LogMessage('Perfil eliminado: ' + ProfileName);
+
+        // Si estamos usando el perfil que se está borrando, cambiar a por defecto
+        if sCurrentProfile = ProfileName then
+        begin
+          sCurrentProfile := '';
+          lblPerfilActual.Caption := 'Perfil actual: (Por defecto)';
+          LeerIni;
+          InitControls;
+        end;
+        UpdateProfileCombo;
+        ShowMessage('Perfil eliminado correctamente');
+      end
+      else
+        ShowMessage('No se pudo eliminar el archivo del perfil');
+    end
+    else
+      ShowMessage('El archivo del perfil no existe');
+  end;
+end;
+
+procedure TfrmPublish.UpdateButtonStates;
+begin
+  btnBorrarPerfil.Enabled := (cmbPerfiles.ItemIndex >= 0) and (cmbPerfiles.Items.Count > 0);
+  btnUsarPerfil.Enabled := (cmbPerfiles.ItemIndex >= 0) and
+                           (cmbPerfiles.Text <> sCurrentProfile);
+end;
+
+procedure TfrmPublish.UpdateProfileCombo;
+var
+  SearchRec: TSearchRec;
+  AppPath, AppName: string;
+  FileName, ProfileName: string;
+  UnderscorePos: Integer;
+  CurrentSelection: string;
+begin
+  // Guardar selección actual
+  CurrentSelection := '';
+  if cmbPerfiles.ItemIndex >= 0 then
+    CurrentSelection := cmbPerfiles.Text;
+  // Limpiar combo
+  cmbPerfiles.Items.Clear;
+  AppPath := ExtractFilePath(ParamStr(0));
+  AppName := TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0)));
+  // Buscar archivos con el patrón: AppName_*.ini
+  if FindFirst(AppPath + AppName + '_*.ini', faAnyFile, SearchRec) = 0 then
+  begin
+    repeat
+      FileName := TPath.GetFileNameWithoutExtension(SearchRec.Name);
+      // Extraer el nombre del perfil después del guión bajo
+      UnderscorePos := Pos('_', FileName);
+      if UnderscorePos > 0 then
+      begin
+        ProfileName := Copy(FileName, UnderscorePos + 1, Length(FileName));
+        if ProfileName <> '' then
+          cmbPerfiles.Items.Add(ProfileName);
+      end;
+    until FindNext(SearchRec) <> 0;
+    FindClose(SearchRec);
+  end;
+  // Ordenar alfabéticamente
+  cmbPerfiles.Sorted := True;
+  // Restaurar selección si existe
+  if (CurrentSelection <> '') and (cmbPerfiles.Items.IndexOf(CurrentSelection) >= 0) then
+    cmbPerfiles.ItemIndex := cmbPerfiles.Items.IndexOf(CurrentSelection)
+  else if cmbPerfiles.Items.Count > 0 then
+    cmbPerfiles.ItemIndex := 0;
+  // Actualizar estado de botones
+  UpdateButtonStates;
+end;
+
+procedure TfrmPublish.btnNuevoPerfilClick(Sender: TObject);
+var
+  NombrePerfil: string;
+  AppName, CurrentFile, NewFile: string;
+begin
+  NombrePerfil := InputBox('Nuevo Perfil', 'Ingrese el nombre del nuevo perfil:', '');
+  if Trim(NombrePerfil) = '' then
+    Exit;
+  // Validar caracteres
+  if (Pos('\', NombrePerfil) > 0) or (Pos('/', NombrePerfil) > 0) or
+     (Pos(':', NombrePerfil) > 0) or (Pos('*', NombrePerfil) > 0) or
+     (Pos('?', NombrePerfil) > 0) or (Pos('"', NombrePerfil) > 0) or
+     (Pos('<', NombrePerfil) > 0) or (Pos('>', NombrePerfil) > 0) or
+     (Pos('|', NombrePerfil) > 0) or (Pos('_', NombrePerfil) > 0) then
+  begin
+    ShowMessage('El nombre del perfil contiene caracteres no válidos');
+    Exit;
+  end;
+  AppName := TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0)));
+  NewFile := ExtractFilePath(ParamStr(0)) + AppName + '_' + NombrePerfil + '.ini';
+  // Verificar si ya existe
+  if FileExists(NewFile) then
+  begin
+    ShowMessage('Ya existe un perfil con ese nombre');
+    Exit;
+  end;
+  // Guardar configuración actual primero
+  GrabarIni;
+  // Copiar desde el perfil actual
+  if sCurrentProfile <> '' then
+    CurrentFile := ExtractFilePath(ParamStr(0)) + AppName + '_' + sCurrentProfile + '.ini'
+  else
+    CurrentFile := ExtractFilePath(ParamStr(0)) + AppName + '.ini';
+  // Copiar archivo
+  if FileExists(CurrentFile) then
+  begin
+    if CopyFile(PChar(CurrentFile), PChar(NewFile), False) then
+    begin
+      UpdateProfileCombo;
+      cmbPerfiles.ItemIndex := cmbPerfiles.Items.IndexOf(NombrePerfil);
+      ShowMessage('Perfil "' + NombrePerfil + '" creado correctamente');
+      LogMessage('Nuevo perfil creado: ' + NombrePerfil);
+    end
+    else
+      ShowMessage('Error al crear el perfil');
+  end
+  else
+  begin
+    ShowMessage('No se pudo encontrar el perfil actual para copiar');
+  end;
+end;
 
 function TfrmPublish.ReadCompleteDelphiPaths(const DelphiVersion: string): TDelphiPaths;
 var
@@ -296,7 +456,6 @@ begin
   // Los recursos suelen estar en las mismas carpetas que las unidades,
   // pero también en subcarpetas específicas como /Resources
   Result.ResourcePaths := Result.UnitPaths; // Usar los mismos paths como base
-
   // Agregar variaciones específicas para recursos
   var UnitPathArray := Result.UnitPaths.Split([';']);
   for var UPath in UnitPathArray do
@@ -311,7 +470,6 @@ begin
         Result.ResourcePaths := Result.ResourcePaths + ';"' + ResourcesSubDir + '"';
         LogMessage('Agregado path de recursos: ' + ResourcesSubDir);
       end;
-
       // Verificar si existe subcarpeta Res
       var ResSubDir := IncludeTrailingPathDelimiter(CleanPath) + 'Res';
       if DirectoryExists(ResSubDir) then
@@ -385,6 +543,7 @@ end;
 procedure TfrmPublish.FormCreate(Sender: TObject);
 begin
   MakeDll;
+  InitProfile;
   leerIni;
   InitControls;
 end;
@@ -858,11 +1017,181 @@ begin
 //  end;
 end;
 
+procedure TfrmPublish.btnComprimirEClick(Sender: TObject);
+var
+  ProjectName, ExeFileName, CompressedFileName: string;
+  ExeSourcePath, ExeDestPath: string;
+  Arch: I7zOutArchive;
+  i: Integer;
+  FilesToCompress: TStringList;
+  DestFile, RelativePath: string;
+  TimeStamp: string;
+begin
+  // Validar que existe el proyecto
+  if not FileExists(edtProjectPath.Text) then
+  begin
+    LogMessage('ERROR: Seleccione un archivo de proyecto válido');
+    Exit;
+  end;
+
+  // Validar carpeta destino
+  if not DirectoryExists(edtExeDestPath.Text) then
+  begin
+    LogMessage('ERROR: La carpeta destino no existe: ' + edtExeDestPath.Text);
+    Exit;
+  end;
+
+  btnComprimirExe.Enabled := False;
+  try
+    M1.Lines.Clear;
+    M1.Lines.Add('=== INICIANDO COMPRESIÓN DE EJECUTABLE ===');
+
+    // Obtener nombre del proyecto sin extensión
+    ProjectName := TPath.GetFileNameWithoutExtension(edtProjectPath.Text);
+
+    // Generar marca de tiempo
+    TimeStamp := FormatDateTime('yyyymmddhhnn', Now);
+
+    // Construir ruta del ejecutable compilado
+    if ContainsText(edtOutputExe.Text, '.\') then
+      ExeSourcePath := ExtractFilePath(edtProjectPath.Text) + edtOutputExe.Text + '\' + ProjectName + '.exe'
+    else
+      ExeSourcePath := edtOutputExe.Text + '\' + ProjectName + '.exe';
+
+    // Verificar que existe el ejecutable
+    if not FileExists(ExeSourcePath) then
+    begin
+      LogMessage('ERROR: No se encontró el ejecutable: ' + ExeSourcePath);
+      LogMessage('Compile primero el proyecto');
+      Exit;
+    end;
+
+    LogMessage('Ejecutable encontrado: ' + ExeSourcePath);
+
+    // PASO 1: Copiar ejecutable a carpeta destino
+    ExeDestPath := IncludeTrailingPathDelimiter(edtExeDestPath.Text) + ProjectName + '.exe';
+    LogMessage('Copiando ejecutable a: ' + ExeDestPath);
+
+    if not CopyFile(PChar(ExeSourcePath), PChar(ExeDestPath), False) then
+    begin
+      LogMessage('ERROR: No se pudo copiar el ejecutable');
+      Exit;
+    end;
+    LogMessage('✓ Ejecutable copiado correctamente');
+
+    // PASO 2: Copiar archivos adicionales
+    LogMessage('Copiando archivos adicionales...');
+    for i := 0 to lstFilesExe.Items.Count - 1 do
+    begin
+      var SourceFile := lstFilesExe.Items[i];
+      if FileExists(SourceFile) then
+      begin
+        DestFile := IncludeTrailingPathDelimiter(edtExeDestPath.Text) + ExtractFileName(SourceFile);
+        if CopyFile(PChar(SourceFile), PChar(DestFile), False) then
+          LogMessage('✓ Copiado: ' + ExtractFileName(SourceFile))
+        else
+          LogMessage('✗ Error copiando: ' + ExtractFileName(SourceFile));
+      end
+      else
+        LogMessage('✗ No existe: ' + SourceFile);
+    end;
+
+    // PASO 3: Crear lista de archivos a comprimir
+    FilesToCompress := TStringList.Create;
+    try
+      // Agregar ejecutable
+      FilesToCompress.Add(ExeDestPath);
+
+      // Agregar archivos adicionales que se copiaron exitosamente
+      for i := 0 to lstFilesExe.Items.Count - 1 do
+      begin
+        DestFile := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
+                   ExtractFileName(lstFilesExe.Items[i]);
+        if FileExists(DestFile) then
+          FilesToCompress.Add(DestFile);
+      end;
+
+      LogMessage('Total archivos a comprimir: ' + IntToStr(FilesToCompress.Count));
+
+      // PASO 4: Crear archivo comprimido
+      CompressedFileName := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
+                           ProjectName + '_' + edtVersion.Text + '_' + TimeStamp + '.7z';
+
+      LogMessage('Creando archivo comprimido: ' + ExtractFileName(CompressedFileName));
+
+      Arch := CreateOutArchive(CLSID_CFormat7z);
+      SetCompressionLevel(Arch, 9);
+      SevenZipSetCompressionMethod(Arch, m7LZMA);
+
+      // Usar la misma contraseña que en la pestaña de archivos fuente
+      if edtPassword.Text <> '' then
+      begin
+        Arch.SetPassword(edtPassword.Text);
+        LogMessage('Archivo protegido con contraseña');
+      end;
+
+      // Agregar archivos al comprimido
+      var BaseDir := IncludeTrailingPathDelimiter(edtExeDestPath.Text);
+      var BaseDirLen := Length(BaseDir);
+
+      for var FileName in FilesToCompress do
+      begin
+        // Crear ruta relativa (solo nombre del archivo)
+        RelativePath := ExtractFileName(FileName);
+        Arch.AddFile(FileName, RelativePath);
+        LogMessage('Agregado al archivo: ' + RelativePath);
+      end;
+
+      // Guardar archivo comprimido
+      Arch.SaveToFile(CompressedFileName);
+      LogMessage('✓ Archivo comprimido creado: ' + ExtractFileName(CompressedFileName));
+
+      // PASO 5: Enviar a VirusTotal si está habilitado
+      if chkSendToVirusTotal.Checked and (Trim(edtVirusTotalAPIKey.Text) <> '') then
+      begin
+        LogMessage('Enviando a VirusTotal...');
+        if SendToVirusTotal(ExeDestPath) then
+          LogMessage('✓ Archivo enviado a VirusTotal correctamente')
+        else
+          LogMessage('✗ Error al enviar a VirusTotal');
+      end;
+
+      M1.Lines.Add('');
+      M1.Lines.Add('=== PROCESO COMPLETADO EXITOSAMENTE ===');
+      M1.Lines.Add('Ejecutable: ' + ProjectName + '.exe');
+      M1.Lines.Add('Archivos adicionales: ' + IntToStr(lstFilesExe.Items.Count));
+      M1.Lines.Add('Archivo comprimido: ' + ExtractFileName(CompressedFileName));
+      M1.Lines.Add('Ubicación: ' + edtExeDestPath.Text);
+
+      ShowMessage('Compresión completada exitosamente!' + #13#10 +
+                  'Archivo: ' + ExtractFileName(CompressedFileName));
+
+    finally
+      FilesToCompress.Free;
+    end;
+
+  except
+    on E: Exception do
+    begin
+      LogMessage('ERROR CRÍTICO: ' + E.Message);
+      ShowMessage('Error durante la compresión: ' + E.Message);
+    end;
+  end;
+
+  btnComprimirExe.Enabled := True;
+end;
+
 procedure TfrmPublish.btnOrigenClick(Sender: TObject);
 begin
   flpndlg1.DefaultFolder := edtOrigen.Text;
   if flpndlg1.Execute then
     edtOrigen.Text := flpndlg1.FileName;
+end;
+
+procedure TfrmPublish.btnAddExeClick(Sender: TObject);
+begin
+  if (edtAddExe.Text <> '') then
+    lstFilesExe.Items.Add(edtAddExe.Text);
 end;
 
 procedure TfrmPublish.btnAddExtClick(Sender: TObject);
@@ -878,6 +1207,12 @@ begin
   var ResultSummary := GetAnalysisResult(edtAnalisisId.Text);
   if ResultSummary <> '' then
     m1.Lines.Add('Resultado: ' + ResultSummary);
+end;
+
+procedure TfrmPublish.btnDeleteExeClick(Sender: TObject);
+begin
+  if lstFilesExe.ItemIndex >= 0 then
+    lstFilesExe.Items.Delete(lstFilesExe.ItemIndex);
 end;
 
 procedure TfrmPublish.btnDeleteExtClick(Sender: TObject);
@@ -936,6 +1271,20 @@ begin
   end;
 end;
 
+procedure TfrmPublish.btnSelectFileAddClick(Sender: TObject);
+begin
+  if dlgOpenPoject.Execute() then
+    edtAddExe.Text := dlgOpenPoject.FileName;
+  btnAddExeClick(Sender);
+end;
+
+procedure TfrmPublish.btnSelectFolderCopyExeClick(Sender: TObject);
+begin
+  dlgSelectFolder.DefaultFolder := edtExeDestPath.Text;
+  if dlgSelectFolder.Execute then
+    edtExeDestPath.Text := dlgSelectFolder.FileName;
+end;
+
 procedure TfrmPublish.btnSelectLibVarGlobClick(Sender: TObject);
 begin
 //
@@ -945,6 +1294,33 @@ procedure TfrmPublish.btnSelectProjectClick(Sender: TObject);
 begin
   if dlgOpenPoject.Execute() then
     edtProjectPath.Text := dlgOpenPoject.FileName;
+end;
+
+procedure TfrmPublish.btnUsarPerfilClick(Sender: TObject);
+var
+  ProfileName: string;
+begin
+  if cmbPerfiles.ItemIndex < 0 then
+    Exit;
+  ProfileName := cmbPerfiles.Text;
+  // Guardar configuración actual antes de cambiar
+    GrabarIni;
+  // Cambiar al nuevo perfil
+  sCurrentProfile := ProfileName;
+  LeerIni;
+  InitControls;
+  lblPerfilActual.Caption := 'Perfil actual: ' + ProfileName;
+  LogMessage('Perfil cambiado a: ' + ProfileName);
+  // Guardar último perfil usado
+  var AppName := TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0)));
+  with TIniFile.Create(ExtractFilePath(ParamStr(0)) + AppName + '.ini') do
+  try
+    WriteString('General', 'LastProfile', ProfileName);
+  finally
+    Free;
+  end;
+  UpdateButtonStates;
+  //ShowMessage('Perfil cargado: ' + ProfileName);
 end;
 
 procedure TfrmPublish.btnVirusTotalClick(Sender: TObject);
@@ -963,40 +1339,44 @@ begin
     raise Exception.Create('Error cargando 7z.dll');
 end;
 
-function TfrmPublish.leCadINI (clave, cadena : string; defecto : string) : string;
+function TfrmPublish.leCadINI(clave, cadena: string; defecto: string): string;
 var
-  sIniFile:string;
+  sIniFile: string;
+  AppName: string;
 begin
-  if ParamStr(2) = '' then
+  AppName := TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0)));
+  if sCurrentProfile <> '' then
     sIniFile := ExtractFilePath(ParamStr(0)) +
-        TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0))) + '.ini'
+                                        AppName + '_' + sCurrentProfile + '.ini'
   else
-    sIniFile := ExtractFilePath(ParamStr(0)) + ParamStr(2);
-
-  with tinifile.create (sIniFile) do
+    sIniFile := ExtractFilePath(ParamStr(0)) + AppName + '.ini';
+  with TIniFile.Create(sIniFile) do
   try
-    result := readString(clave, cadena, defecto);
-    if result = defecto then
+    Result := ReadString(clave, cadena, defecto);
+    if Result = defecto then
       esCadINI(clave, cadena, defecto);
   finally
-    free;
+    Free;
   end;
 end;
 
-procedure TfrmPublish.esCadINI (clave, cadena, valor : string);
+procedure TfrmPublish.esCadINI(clave, cadena, valor: string);
 var
-   sIniFile:string;
+  sIniFile: string;
+  AppName: string;
 begin
-  if ParamStr(2) = '' then
+  AppName := TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0)));
+
+  if sCurrentProfile <> '' then
     sIniFile := ExtractFilePath(ParamStr(0)) +
-        TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0))) + '.ini'
+                                        AppName + '_' + sCurrentProfile + '.ini'
   else
-    sIniFile := ExtractFilePath(ParamStr(0)) + ParamStr(2);
-  with tinifile.create (sIniFile) do
+    sIniFile := ExtractFilePath(ParamStr(0)) + AppName + '.ini';
+  with TIniFile.Create(sIniFile) do
   try
-    writeString (clave, cadena, valor);
+    WriteString(clave, cadena, valor);
   finally
-    free;
+    Free;
   end;
 end;
 
@@ -1028,6 +1408,18 @@ begin
   sBuildConfiguration := leCadIni('Compiler', 'BuildConfiguration', 'Release');
   sOutputDirectory := leCadIni('Compiler', 'OutputDirectory', '.\Win32\Release');
   sAdditionalParams := leCadIni('Compiler', 'AdditionalParams', '');
+
+    // Agregar estos nuevos parámetros:
+  sExeDestPath := leCadIni('PublishExe', 'ExeDestPath', 'c:\publish\');
+  sAnalisisID := leCadIni('PublishExe', 'AnalisisID', '');
+
+  // Leer archivos adicionales del exe (similar a extensiones)
+  var filesExe := leCadIni('PublishExe', 'FilesExe', '');
+
+  // Cargar archivos adicionales en el ListBox
+  lstFilesExe.Items.Clear;
+  if filesExe <> '' then
+    lstFilesExe.Items.CommaText := filesExe;
 end;
 procedure TfrmPublish.LogMessage(const Msg: string);
 begin
@@ -1057,6 +1449,59 @@ begin
   edtConfig.Text := sBuildConfiguration;
   edtOutputExe.Text := sOutputDirectory;
   edtParamAdd.Text := sAdditionalParams;
+  edtExeDestPath.Text := sExeDestPath;
+  edtAnalisisID.Text := sAnalisisID;
+end;
+
+procedure TfrmPublish.InitProfile;
+var
+  ProfileFromParam: string;
+  AppName: string;
+begin
+  // Verificar parámetro de línea de comandos
+  ProfileFromParam := '';
+  if ParamCount >= 1 then
+    ProfileFromParam := ParamStr(1);
+  // Cargar perfiles disponibles
+  UpdateProfileCombo;
+  if ProfileFromParam <> '' then
+  begin
+    // Usar perfil desde parámetro
+    AppName := TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0)));
+    if FileExists(ExtractFilePath(ParamStr(0)) + AppName + '_' + ProfileFromParam + '.ini') then
+    begin
+      sCurrentProfile := ProfileFromParam;
+      cmbPerfiles.ItemIndex := cmbPerfiles.Items.IndexOf(ProfileFromParam);
+    end
+    else
+    begin
+      sCurrentProfile := '';
+      LogMessage('Perfil especificado no encontrado: ' + ProfileFromParam);
+    end;
+  end
+  else
+  begin
+    // Cargar último perfil usado
+    AppName := TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0)));
+    with TIniFile.Create(ExtractFilePath(ParamStr(0)) + AppName + '.ini') do
+    try
+      var LastProfile := ReadString('General', 'LastProfile', '');
+      if (LastProfile <> '') and (cmbPerfiles.Items.IndexOf(LastProfile) >= 0) then
+      begin
+        sCurrentProfile := LastProfile;
+        cmbPerfiles.ItemIndex := cmbPerfiles.Items.IndexOf(LastProfile);
+      end
+      else
+        sCurrentProfile := '';
+    finally
+      Free;
+    end;
+  end;
+  if sCurrentProfile <> '' then
+    lblPerfilActual.Caption := 'Perfil actual: ' + sCurrentProfile
+  else
+    lblPerfilActual.Caption := 'Perfil actual: (Por defecto)';
+  UpdateButtonStates;
 end;
 
 procedure TfrmPublish.grabarIni;
@@ -1115,6 +1560,25 @@ begin
   esCadIni('Compiler', 'BuildConfiguration',  sBuildConfiguration);
   esCadIni('Compiler', 'OutputDirectory',     sOutputDirectory);
   esCadIni('Compiler', 'AdditionalParams',    sAdditionalParams);
+
+  sExeDestPath := edtExeDestPath.Text;
+  sAnalisisID := edtAnalisisID.Text;
+
+  // Convertir lista de archivos exe a string separado por comas
+  var filesExe := '';
+  for i := 0 to lstFilesExe.Items.Count - 1 do
+  begin
+    if i > 0 then
+      filesExe := filesExe + ',';
+    filesExe := filesExe + lstFilesExe.Items[i];
+  end;
+
+  // ... código existente hasta grabar en INI ...
+
+  // Agregar estas nuevas entradas:
+  esCadIni('PublishExe', 'ExeDestPath', sExeDestPath);
+  esCadIni('PublishExe', 'AnalisisID', sAnalisisID);
+  esCadIni('PublishExe', 'FilesExe', filesExe);
 end;
 
 //FUNCIONES Y PROC COMPILACION
@@ -1331,150 +1795,6 @@ begin
   end;
 end;
 
-//function TfrmPublish.ExecuteCommand2(const CommandLine, DirIni: string): Boolean;
-//var
-//  StartupInfo: TStartupInfo;
-//  ProcessInfo: TProcessInformation;
-//  SecurityAttr: TSecurityAttributes;
-//  ReadPipe, WritePipe: THandle;
-//  Buffer: array[0..8191] of Byte;  // Buffer más grande
-//  BytesRead, BytesAvailable: DWORD;
-//  TempBytes: TBytes;
-//  Output: TStringBuilder;  // Usar StringBuilder para mejor rendimiento
-//  ExitCode: DWORD;
-//  ProcessRunning: Boolean;
-//  WaitResult: DWORD;
-//const
-//  BUFFER_SIZE = 8192;
-//  READ_TIMEOUT = 100;  // ms
-//begin
-//  Result := False;
-//  Output := TStringBuilder.Create;
-//  ReadPipe := INVALID_HANDLE_VALUE;
-//  WritePipe := INVALID_HANDLE_VALUE;
-//  try
-//    // Configurar seguridad para heredar handles
-//    SecurityAttr.nLength := SizeOf(SecurityAttr);
-//    SecurityAttr.bInheritHandle := True;
-//    SecurityAttr.lpSecurityDescriptor := nil;
-//    // Crear pipe con buffer más grande
-//    if not CreatePipe(ReadPipe, WritePipe, @SecurityAttr, BUFFER_SIZE * 4) then
-//    begin
-//      LogMessage('Error creando pipe: ' + IntToStr(GetLastError));
-//      Exit;
-//    end;
-//    // Configurar StartupInfo
-//    ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
-//    StartupInfo.cb := SizeOf(StartupInfo);
-//    StartupInfo.hStdOutput := WritePipe;
-//    StartupInfo.hStdError := WritePipe;
-//    StartupInfo.hStdInput := GetStdHandle(STD_INPUT_HANDLE);
-//    StartupInfo.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
-//    StartupInfo.wShowWindow := SW_HIDE;
-//    // Crear proceso
-//    if not CreateProcess(nil, PChar(CommandLine), nil, nil, True,
-//                        CREATE_NO_WINDOW, nil, PChar(DirIni), StartupInfo, ProcessInfo) then
-//    begin
-//      LogMessage('Error al ejecutar: ' + IntToStr(GetLastError));
-//      Exit;
-//    end;
-//    try
-//      // Cerrar el extremo de escritura del pipe inmediatamente
-//      CloseHandle(WritePipe);
-//      WritePipe := INVALID_HANDLE_VALUE;
-//      ProcessRunning := True;
-//      // Bucle principal de lectura
-//      while ProcessRunning do
-//      begin
-//        Application.ProcessMessages;
-//        // Verificar si el proceso sigue ejecutándose
-//        WaitResult := WaitForSingleObject(ProcessInfo.hProcess, 0);
-//        ProcessRunning := (WaitResult = WAIT_TIMEOUT);
-//        // Verificar si hay datos disponibles en el pipe
-//        if PeekNamedPipe(ReadPipe, nil, 0, nil, @BytesAvailable, nil) then
-//        begin
-//          if BytesAvailable > 0 then
-//          begin
-//            // Leer datos disponibles
-//            ZeroMemory(@Buffer, SizeOf(Buffer));
-//            if ReadFile(ReadPipe, Buffer, SizeOf(Buffer) - 1, BytesRead, nil) and (BytesRead > 0) then
-//            begin
-//              SetLength(TempBytes, BytesRead);
-//              Move(Buffer[0], TempBytes[0], BytesRead);
-//              // Intentar diferentes codificaciones
-//              try
-//                Output.Append(TEncoding.UTF8.GetString(TempBytes));
-//              except
-//                try
-//                  Output.Append(TEncoding.Default.GetString(TempBytes));
-//                except
-//                  // Como último recurso, convertir byte a byte
-//                  for var i := 0 to BytesRead - 1 do
-//                    Output.Append(Chr(Buffer[i]));
-//                end;
-//              end;
-//            end;
-//          end
-//          else if not ProcessRunning then
-//          begin
-//            // El proceso terminó y no hay más datos
-//            Break;
-//          end;
-//        end
-//        else if not ProcessRunning then
-//        begin
-//          // Error en PeekNamedPipe y proceso terminado
-//          Break;
-//        end;
-//        // Pequeña pausa para evitar consumir demasiada CPU
-//        if BytesAvailable = 0 then
-//          Sleep(READ_TIMEOUT);
-//      end;
-//      // Leer cualquier dato restante después de que termine el proceso
-//      repeat
-//        if PeekNamedPipe(ReadPipe, nil, 0, nil, @BytesAvailable, nil) and (BytesAvailable > 0) then
-//        begin
-//          ZeroMemory(@Buffer, SizeOf(Buffer));
-//          if ReadFile(ReadPipe, Buffer, SizeOf(Buffer) - 1, BytesRead, nil) and (BytesRead > 0) then
-//          begin
-//            SetLength(TempBytes, BytesRead);
-//            Move(Buffer[0], TempBytes[0], BytesRead);
-//            try
-//              Output.Append(TEncoding.UTF8.GetString(TempBytes));
-//            except
-//              Output.Append(TEncoding.Default.GetString(TempBytes));
-//            end;
-//          end;
-//        end
-//        else
-//          Break;
-//      until False;
-//      // Verificar código de salida
-//      if GetExitCodeProcess(ProcessInfo.hProcess, ExitCode) then
-//      begin
-//        LogMessage('Proceso terminado con código: ' + IntToStr(ExitCode));
-//        Result := (ExitCode = 0);
-//      end;
-//      // Mostrar toda la salida capturada
-//      var CompleteOutput := Output.ToString;
-//      LogMessage('=== SALIDA COMPLETA DEL PROCESO ===');
-//      LogMessage('Longitud total: ' + IntToStr(Length(CompleteOutput)) + ' caracteres');
-//      LogMessage(CompleteOutput);
-//      LogMessage('=== FIN SALIDA PROCESO ===');
-//    finally
-//      CloseHandle(ProcessInfo.hProcess);
-//      CloseHandle(ProcessInfo.hThread);
-//    end;
-//  finally
-//    // Cleanup garantizado
-//    if ReadPipe <> INVALID_HANDLE_VALUE then
-//      CloseHandle(ReadPipe);
-//    if WritePipe <> INVALID_HANDLE_VALUE then
-//      CloseHandle(WritePipe);
-//    Output.Free;
-//  end;
-//end;
-
 procedure TfrmPublish.btnCompileClick(Sender: TObject);
 var
   NewVersion: string;
@@ -1564,7 +1884,6 @@ begin
   end;
 end;
 
-
 // Función para forzar el análisis de comportamiento
 function TfrmPublish.ForceFileAnalysis(const FileHash: string): Boolean;
 var
@@ -1577,7 +1896,6 @@ begin
   try
     HTTPClient.CustomHeaders['x-apikey'] := Trim(edtVirusTotalAPIKey.Text);
     HTTPClient.ContentType := 'application/x-www-form-urlencoded';
-
     RequestBody := TStringStream.Create('');
     try
       LogMessage('🚀 Forzando análisis de comportamiento en sandbox...');
@@ -1585,7 +1903,6 @@ begin
       // Forzar análisis del archivo
       Response := HTTPClient.Post('https://www.virustotal.com/api/v3/files/' + FileHash + '/analyse',
                                  RequestBody);
-
       if Response.StatusCode = 200 then
       begin
         LogMessage('✅ Análisis de comportamiento iniciado');
@@ -1789,22 +2106,17 @@ var
   CurrentDir: string;
 begin
   Result := False;
-
   try
     if DirIni <> '' then
     begin
       CurrentDir := GetCurrentDir;
       SetCurrentDir(DirIni);
     end;
-
     LogMessage('Ejecutando: ' + CommandLine);
-
     // Usar Execute con callback para procesamiento línea por línea
     ExitCode := Execute(CommandLine, ProcessOutputLine);
-
     LogMessage('Código de salida: ' + IntToStr(ExitCode));
     Result := (ExitCode = 0);
-
   except
     on E: Exception do
     begin
@@ -1812,11 +2124,9 @@ begin
       Result := False;
     end;
   end;
-
   if (DirIni <> '') and (CurrentDir <> '') then
     SetCurrentDir(CurrentDir);
 end;
-
 // Método para procesar cada línea
 procedure TfrmPublish.ProcessOutputLine(const Text: string);
 begin

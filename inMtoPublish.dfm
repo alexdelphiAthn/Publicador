@@ -50,15 +50,15 @@ object frmPublish: TfrmPublish
     ParentFont = False
     ScrollBars = ssVertical
     TabOrder = 0
-    ExplicitLeft = -8
-    ExplicitTop = 434
+    ExplicitTop = 360
+    ExplicitWidth = 1067
   end
   object jpcPestanas: TJvgPageControl
     Left = 0
     Top = 0
     Width = 1071
     Height = 358
-    ActivePage = tsFicheros
+    ActivePage = tsPublicarExe
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -94,7 +94,8 @@ object frmPublish: TfrmPublish
     TabSelectedStyle.Gradient.Active = False
     TabSelectedStyle.Gradient.Orientation = fgdHorizontal
     Options = [ftoAutoFontDirection, ftoExcludeGlyphs]
-    ExplicitHeight = 428
+    ExplicitWidth = 1067
+    ExplicitHeight = 357
     object tsFicheros: TTabSheet
       Caption = 'Ficheros C'#243'digo Fuente'
       object lblOrigen: TLabel
@@ -415,7 +416,7 @@ object frmPublish: TfrmPublish
           Top = 52
           Width = 99
           Height = 25
-          Caption = 'Seleccionar'
+          Caption = '...'
           TabOrder = 2
           OnClick = btnSelectProjectClick
         end
@@ -431,7 +432,7 @@ object frmPublish: TfrmPublish
           Top = 84
           Width = 99
           Height = 25
-          Caption = 'Seleccionar'
+          Caption = '...'
           TabOrder = 4
           OnClick = btnSelectLibVarGlobClick
         end
@@ -553,9 +554,11 @@ object frmPublish: TfrmPublish
       object lbl21: TLabel
         Left = 488
         Top = 13
-        Width = 88
+        Width = 501
         Height = 21
-        Caption = 'Carpeta final'
+        Caption = 
+          'Carpeta final. Copia aqu'#237' el ejecutable, a'#241'adidos y genera el co' +
+          'mprimido:'
       end
       object lbl4: TLabel
         Left = 488
@@ -564,14 +567,20 @@ object frmPublish: TfrmPublish
         Height = 21
         Caption = 'VirusTotal API Key:'
       end
-      object edtExtension1: TEdit
+      object edtAddExe: TEdit
         Left = 16
-        Top = 40
+        Top = 44
         Width = 201
-        Height = 29
+        Height = 21
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Style = []
+        ParentFont = False
         TabOrder = 0
       end
-      object lstExtensiones1: TListBox
+      object lstFilesExe: TListBox
         Left = 16
         Top = 74
         Width = 345
@@ -588,34 +597,34 @@ object frmPublish: TfrmPublish
         ParentFont = False
         TabOrder = 1
       end
-      object btnAddExt1: TButton
+      object btnAddExe: TButton
         Left = 303
         Top = 43
         Width = 26
         Height = 25
         Caption = '+'
         TabOrder = 2
-        OnClick = btnAddExtClick
+        OnClick = btnAddExeClick
       end
-      object btnDeleteExt1: TButton
+      object btnDeleteExe: TButton
         Left = 335
         Top = 43
         Width = 26
         Height = 25
         Caption = '-'
         TabOrder = 3
-        OnClick = btnDeleteExtClick
+        OnClick = btnDeleteExeClick
       end
-      object btnSelectProject1: TButton
+      object btnSelectFileAdd: TButton
         Left = 223
         Top = 43
         Width = 74
         Height = 25
-        Caption = 'Buscar'
+        Caption = '...'
         TabOrder = 4
-        OnClick = btnSelectProjectClick
+        OnClick = btnSelectFileAddClick
       end
-      object edtProjectPath1: TEdit
+      object edtExeDestPath: TEdit
         Left = 488
         Top = 40
         Width = 400
@@ -623,14 +632,14 @@ object frmPublish: TfrmPublish
         TabOrder = 5
         Text = 'C:\DISCO DURO\proyectos\subocasoft'
       end
-      object btnSelectProject2: TButton
+      object btnSelectFolderCopyExe: TButton
         Left = 894
         Top = 38
         Width = 99
         Height = 25
         Caption = 'Seleccionar'
         TabOrder = 6
-        OnClick = btnSelectProjectClick
+        OnClick = btnSelectFolderCopyExeClick
       end
       object btnComprimirExe: TButton
         Left = 384
@@ -639,6 +648,7 @@ object frmPublish: TfrmPublish
         Height = 25
         Caption = 'Comprimir'
         TabOrder = 7
+        OnClick = btnComprimirEClick
       end
       object chkSendToVirusTotal: TCheckBox
         Left = 384
@@ -656,8 +666,8 @@ object frmPublish: TfrmPublish
         TabOrder = 9
       end
       object btnAnalizar: TButton
-        Left = 854
-        Top = 153
+        Left = 849
+        Top = 262
         Width = 211
         Height = 25
         Caption = 'ANALIZAR RESPUESTA VIRUSTOTAL'
@@ -671,7 +681,7 @@ object frmPublish: TfrmPublish
         OnClick = btnAnalizarClick
       end
       object btnVirusTotal: TButton
-        Left = 854
+        Left = 870
         Top = 208
         Width = 179
         Height = 25
@@ -699,6 +709,65 @@ object frmPublish: TfrmPublish
         Height = 25
         Caption = 'Enviar Fichero Destino'
         TabOrder = 13
+      end
+    end
+    object tsPerfiles: TTabSheet
+      Caption = 'Perfiles'
+      ImageIndex = 4
+      object lbl6: TLabel
+        Left = 144
+        Top = 35
+        Width = 53
+        Height = 21
+        Caption = 'Perfiles:'
+      end
+      object lblPerfilActual: TLabel
+        Left = 632
+        Top = 35
+        Width = 105
+        Height = 21
+        Caption = 'Perfil en Uso: '
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -16
+        Font.Name = 'Segoe UI'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object cmbPerfiles: TJvComboBox
+        Left = 224
+        Top = 32
+        Width = 377
+        Height = 29
+        TabOrder = 0
+        Text = ''
+      end
+      object btnNuevoPerfil: TButton
+        Left = 78
+        Top = 102
+        Width = 99
+        Height = 25
+        Caption = 'Nuevo Perfil'
+        TabOrder = 1
+        OnClick = btnNuevoPerfilClick
+      end
+      object btnBorrarPerfil: TButton
+        Left = 224
+        Top = 102
+        Width = 99
+        Height = 25
+        Caption = 'Borrar Perfil'
+        TabOrder = 2
+        OnClick = btnBorrarPerfilClick
+      end
+      object btnUsarPerfil: TButton
+        Left = 376
+        Top = 102
+        Width = 225
+        Height = 25
+        Caption = 'Usar y Cargar Perfil'
+        TabOrder = 3
+        OnClick = btnUsarPerfilClick
       end
     end
   end
