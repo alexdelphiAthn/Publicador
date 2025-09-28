@@ -48,6 +48,7 @@ object frmPublish: TfrmPublish
     Lines.Strings = (
       'm1')
     ParentFont = False
+    PopupMenu = pm1
     ScrollBars = ssVertical
     TabOrder = 0
     ExplicitTop = 358
@@ -815,5 +816,24 @@ object frmPublish: TfrmPublish
     Width = 0
     Left = 464
     Top = 560
+  end
+  object pm1: TPopupMenu
+    Left = 600
+    Top = 512
+    object mnuIrDireccion: TMenuItem
+      Caption = 'Ir a direcci'#243'n de &Internet'
+      OnClick = mnuIrDireccionClick
+    end
+    object mnuSeparador1: TMenuItem
+      Caption = '-'
+    end
+    object mnuAbrirExplorador: TMenuItem
+      Caption = 'Abrir en Explorador de &Windows'
+      OnClick = mnuAbrirExploradorClick
+    end
+    object mnuVerEditor: TMenuItem
+      Caption = 'Ver en &Editor'
+      OnClick = mnuVerEditorClick
+    end
   end
 end

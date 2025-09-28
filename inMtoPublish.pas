@@ -1,4 +1,13 @@
-﻿unit inMtoPublish;
+﻿{*****************************************************************************
+ *                                                                           *
+ *                    ALEJANDRO LAORDEN HIDALGO                              *
+ *              Ingeniero en Informática de Gestión                          *
+ *                           © 2025                                          *
+ *                  alejandro.laorden@proton.me                              *
+ *                                                                           *
+ *****************************************************************************}
+
+unit inMtoPublish;
 
 interface
 
@@ -10,7 +19,7 @@ uses
   clSFtp, sevenzip, System.IniFiles, Vcl.ComCtrls, JvgPage, System.Net.URLClient,
   System.IOUtils, System.StrUtils, System.DateUtils, System.Net.HttpClient,
   System.Net.HttpClientComponent, System.JSON, JvDialogs, clTcpClientSsh,
-  Vcl.ExtCtrls, JvExStdCtrls, JvCombobox;
+  Vcl.ExtCtrls, JvExStdCtrls, JvCombobox, Vcl.Menus;
 
 type
   TDelphiPaths = record
@@ -123,6 +132,11 @@ type
     btnNuevoPerfil: TButton;
     btnBorrarPerfil: TButton;
     btnUsarPerfil: TButton;
+    pm1: TPopupMenu;
+    mnuIrDireccion: TMenuItem;
+    mnuSeparador1: TMenuItem;
+    mnuAbrirExplorador: TMenuItem;
+    mnuVerEditor: TMenuItem;
     procedure btnBorrarPerfilClick(Sender: TObject);
     procedure btnNuevoPerfilClick(Sender: TObject);
     procedure btnCheckClick(Sender: TObject);
@@ -150,6 +164,9 @@ type
     procedure btnSelectFolderCopyExeClick(Sender: TObject);
     procedure btnComprimirEClick(Sender: TObject);
     procedure btnEnviarFTPExeClick(Sender: TObject);
+    procedure mnuVerEditorClick(Sender: TObject);
+    procedure mnuAbrirExploradorClick(Sender: TObject);
+    procedure mnuIrDireccionClick(Sender: TObject);
   private
     sCurrentProfile:string;
     sOrigen, sDestino, sPassword, sServer, sServerPort, sExeDestPath,
@@ -1364,6 +1381,21 @@ begin
     raise Exception.Create('Error cargando 7z.dll');
 end;
 
+procedure TfrmPublish.mnuAbrirExploradorClick(Sender: TObject);
+begin
+//
+end;
+
+procedure TfrmPublish.mnuIrDireccionClick(Sender: TObject);
+begin
+//
+end;
+
+procedure TfrmPublish.mnuVerEditorClick(Sender: TObject);
+begin
+//
+end;
+
 function TfrmPublish.leCadINI(clave, cadena: string; defecto: string): string;
 var
   sIniFile: string;
@@ -1530,7 +1562,7 @@ begin
     lblPerfilActual.Caption := 'Perfil actual: ' + sCurrentProfile
   else
     lblPerfilActual.Caption := 'Perfil actual: (Por defecto)';
-  UpdateButtonStates;
+  //UpdateButtonStates;
 end;
 
 procedure TfrmPublish.grabarIni;
