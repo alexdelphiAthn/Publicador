@@ -192,7 +192,7 @@ type
     function CleanDuplicatePaths(const PathsString: string): string;
     procedure ProcessOutputLine(const Text: string);
     procedure UpdateProfileCombo;
-    procedure UpdateButtonStates;
+//    procedure UpdateButtonStates;
     procedure InitProfile;
   private
     FDelphiPaths: TDelphiPaths;
@@ -248,12 +248,12 @@ begin
   end;
 end;
 
-procedure TfrmPublish.UpdateButtonStates;
-begin
-  btnBorrarPerfil.Enabled := (cmbPerfiles.ItemIndex >= 0) and (cmbPerfiles.Items.Count > 0);
-  btnUsarPerfil.Enabled := (cmbPerfiles.ItemIndex >= 0) and
-                           (cmbPerfiles.Text <> sCurrentProfile);
-end;
+//procedure TfrmPublish.UpdateButtonStates;
+//begin
+//  btnBorrarPerfil.Enabled := (cmbPerfiles.ItemIndex >= 0) and (cmbPerfiles.Items.Count > 0);
+//  btnUsarPerfil.Enabled := (cmbPerfiles.ItemIndex >= 0) and
+//                           (cmbPerfiles.Text <> sCurrentProfile);
+//end;
 
 procedure TfrmPublish.UpdateProfileCombo;
 var
@@ -295,7 +295,7 @@ begin
   else if cmbPerfiles.Items.Count > 0 then
     cmbPerfiles.ItemIndex := 0;
   // Actualizar estado de botones
-  UpdateButtonStates;
+//  UpdateButtonStates;
 end;
 
 procedure TfrmPublish.btnNuevoPerfilClick(Sender: TObject);
@@ -1344,7 +1344,7 @@ begin
   finally
     Free;
   end;
-  UpdateButtonStates;
+//  UpdateButtonStates;
   //ShowMessage('Perfil cargado: ' + ProfileName);
 end;
 
