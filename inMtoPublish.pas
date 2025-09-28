@@ -1019,45 +1019,32 @@ end;
 
 procedure TfrmPublish.btnComprimirEClick(Sender: TObject);
 var
-  ProjectName, ExeFileName, CompressedFileName: string;
+
+  ExeFolder, ProjectName, ExeFileName, CompressedFileName: string;
   ExeSourcePath, ExeDestPath: string;
   Arch: I7zOutArchive;
   i: Integer;
   FilesToCompress: TStringList;
   DestFile, RelativePath: string;
-  TimeStamp: string;
+  Version: string;
 begin
-  // Validar que existe el proyecto
-  if not FileExists(edtProjectPath.Text) then
-  begin
-    LogMessage('ERROR: Seleccione un archivo de proyecto válido');
-    Exit;
-  end;
-
   // Validar carpeta destino
   if not DirectoryExists(edtExeDestPath.Text) then
   begin
     LogMessage('ERROR: La carpeta destino no existe: ' + edtExeDestPath.Text);
     Exit;
   end;
-
-  btnComprimirExe.Enabled := False;
   try
-    M1.Lines.Clear;
-    M1.Lines.Add('=== INICIANDO COMPRESIÓN DE EJECUTABLE ===');
-
+    LogMessage('=== INICIANDO COMPRESIÓN DE EJECUTABLE ===');
     // Obtener nombre del proyecto sin extensión
     ProjectName := TPath.GetFileNameWithoutExtension(edtProjectPath.Text);
-
     // Generar marca de tiempo
-    TimeStamp := FormatDateTime('yyyymmddhhnn', Now);
-
+    Version := edtVersion.Text;
     // Construir ruta del ejecutable compilado
     if ContainsText(edtOutputExe.Text, '.\') then
       ExeSourcePath := ExtractFilePath(edtProjectPath.Text) + edtOutputExe.Text + '\' + ProjectName + '.exe'
     else
       ExeSourcePath := edtOutputExe.Text + '\' + ProjectName + '.exe';
-
     // Verificar que existe el ejecutable
     if not FileExists(ExeSourcePath) then
     begin
@@ -1065,20 +1052,17 @@ begin
       LogMessage('Compile primero el proyecto');
       Exit;
     end;
-
     LogMessage('Ejecutable encontrado: ' + ExeSourcePath);
-
     // PASO 1: Copiar ejecutable a carpeta destino
-    ExeDestPath := IncludeTrailingPathDelimiter(edtExeDestPath.Text) + ProjectName + '.exe';
+    ExeDestPath := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
+                                                           ProjectName + '.exe';
     LogMessage('Copiando ejecutable a: ' + ExeDestPath);
-
     if not CopyFile(PChar(ExeSourcePath), PChar(ExeDestPath), False) then
     begin
-      LogMessage('ERROR: No se pudo copiar el ejecutable');
+      LogMessage('ERROR: No se pudo copiar el ejecutable, ¿faltan permisos?');
       Exit;
     end;
     LogMessage('✓ Ejecutable copiado correctamente');
-
     // PASO 2: Copiar archivos adicionales
     LogMessage('Copiando archivos adicionales...');
     for i := 0 to lstFilesExe.Items.Count - 1 do
@@ -1086,7 +1070,8 @@ begin
       var SourceFile := lstFilesExe.Items[i];
       if FileExists(SourceFile) then
       begin
-        DestFile := IncludeTrailingPathDelimiter(edtExeDestPath.Text) + ExtractFileName(SourceFile);
+        DestFile := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
+                                                    ExtractFileName(SourceFile);
         if CopyFile(PChar(SourceFile), PChar(DestFile), False) then
           LogMessage('✓ Copiado: ' + ExtractFileName(SourceFile))
         else
@@ -1095,13 +1080,11 @@ begin
       else
         LogMessage('✗ No existe: ' + SourceFile);
     end;
-
     // PASO 3: Crear lista de archivos a comprimir
     FilesToCompress := TStringList.Create;
     try
       // Agregar ejecutable
       FilesToCompress.Add(ExeDestPath);
-
       // Agregar archivos adicionales que se copiaron exitosamente
       for i := 0 to lstFilesExe.Items.Count - 1 do
       begin
@@ -1110,30 +1093,25 @@ begin
         if FileExists(DestFile) then
           FilesToCompress.Add(DestFile);
       end;
-
-      LogMessage('Total archivos a comprimir: ' + IntToStr(FilesToCompress.Count));
-
+      LogMessage('Total archivos a comprimir: ' +
+                                               IntToStr(FilesToCompress.Count));
       // PASO 4: Crear archivo comprimido
       CompressedFileName := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
-                           ProjectName + '_' + edtVersion.Text + '_' + TimeStamp + '.7z';
-
-      LogMessage('Creando archivo comprimido: ' + ExtractFileName(CompressedFileName));
-
+                ProjectName + '_' + edtVersion.Text + '_' + Version + '.7z';
+      LogMessage('Creando archivo comprimido: ' +
+                                           ExtractFileName(CompressedFileName));
       Arch := CreateOutArchive(CLSID_CFormat7z);
       SetCompressionLevel(Arch, 9);
       SevenZipSetCompressionMethod(Arch, m7LZMA);
-
       // Usar la misma contraseña que en la pestaña de archivos fuente
-      if edtPassword.Text <> '' then
-      begin
-        Arch.SetPassword(edtPassword.Text);
-        LogMessage('Archivo protegido con contraseña');
-      end;
-
+//      if edtPassword.Text <> '' then
+//      begin
+//        Arch.SetPassword(edtPassword.Text);
+//        LogMessage('Archivo protegido con contraseña');
+//      end;
       // Agregar archivos al comprimido
       var BaseDir := IncludeTrailingPathDelimiter(edtExeDestPath.Text);
       var BaseDirLen := Length(BaseDir);
-
       for var FileName in FilesToCompress do
       begin
         // Crear ruta relativa (solo nombre del archivo)
@@ -1141,11 +1119,10 @@ begin
         Arch.AddFile(FileName, RelativePath);
         LogMessage('Agregado al archivo: ' + RelativePath);
       end;
-
       // Guardar archivo comprimido
       Arch.SaveToFile(CompressedFileName);
-      LogMessage('✓ Archivo comprimido creado: ' + ExtractFileName(CompressedFileName));
-
+      LogMessage('✓ Archivo comprimido creado: ' +
+                                           ExtractFileName(CompressedFileName));
       // PASO 5: Enviar a VirusTotal si está habilitado
       if chkSendToVirusTotal.Checked and (Trim(edtVirusTotalAPIKey.Text) <> '') then
       begin
@@ -1155,21 +1132,15 @@ begin
         else
           LogMessage('✗ Error al enviar a VirusTotal');
       end;
-
-      M1.Lines.Add('');
-      M1.Lines.Add('=== PROCESO COMPLETADO EXITOSAMENTE ===');
-      M1.Lines.Add('Ejecutable: ' + ProjectName + '.exe');
-      M1.Lines.Add('Archivos adicionales: ' + IntToStr(lstFilesExe.Items.Count));
-      M1.Lines.Add('Archivo comprimido: ' + ExtractFileName(CompressedFileName));
-      M1.Lines.Add('Ubicación: ' + edtExeDestPath.Text);
-
-      ShowMessage('Compresión completada exitosamente!' + #13#10 +
-                  'Archivo: ' + ExtractFileName(CompressedFileName));
-
+      LogMessage('');
+      LogMessage('=== PROCESO COMPLETADO EXITOSAMENTE ===');
+      LogMessage('Ejecutable: ' + ProjectName + '.exe');
+      LogMessage('Archivos adicionales: ' + IntToStr(lstFilesExe.Items.Count));
+      LogMessage('Archivo comprimido: ' + ExtractFileName(CompressedFileName));
+      LogMessage('Ubicación: ' + edtExeDestPath.Text);
     finally
       FilesToCompress.Free;
     end;
-
   except
     on E: Exception do
     begin
@@ -1177,7 +1148,6 @@ begin
       ShowMessage('Error durante la compresión: ' + E.Message);
     end;
   end;
-
   btnComprimirExe.Enabled := True;
 end;
 

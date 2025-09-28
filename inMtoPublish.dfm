@@ -58,7 +58,7 @@ object frmPublish: TfrmPublish
     Top = 0
     Width = 1071
     Height = 358
-    ActivePage = tsPublicarExe
+    ActivePage = tsCompilacion
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
