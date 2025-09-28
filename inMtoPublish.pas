@@ -149,6 +149,7 @@ type
     procedure btnSelectFileAddClick(Sender: TObject);
     procedure btnSelectFolderCopyExeClick(Sender: TObject);
     procedure btnComprimirEClick(Sender: TObject);
+    procedure btnEnviarFTPExeClick(Sender: TObject);
   private
     sCurrentProfile:string;
     sOrigen, sDestino, sPassword, sServer, sServerPort, sExeDestPath,
@@ -1243,6 +1244,46 @@ begin
   end;
 end;
 
+procedure TfrmPublish.btnEnviarFTPExeClick(Sender: TObject);
+var
+  sNameFile, CompressedFileName, ProjectName:string;
+begin
+  try
+    // Configuración de conexión
+    SftpClient.Server := edtServer.Text; // IP o nombre del servidor
+    SftpClient.Port := StrToIntDef(edtPuerto.Text, 22); // Puerto SFTP (por defecto 22)
+    SftpClient.UserName := edtUsuario.Text;
+    SftpClient.Password := edtPassFtp.text;
+    try
+      // Conectar al servidor
+      SftpClient.Open;
+      LogMessage('Conectado al servidor SFTP');
+      // Cambiar al directorio remoto donde quieres subir el archivo (opcional)
+      if ((edtCarpetaRemota.Text <> '') or (edtCarpetaRemota.Text <> '/')) then
+        SftpClient.ChangeCurrentDir(edtCarpetaRemota.Text);
+      // Enviar el archivo
+      sNameFile := ExtractFileName(edtDestino.Text);
+      SftpClient.PutFile(edtDestino.Text, sNameFile);
+      LogMessage('Archivo '+sNameFile+' enviado correctamente');
+      ProjectName := TPath.GetFileNameWithoutExtension((edtProjectPath.Text));
+      CompressedFileName := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
+                ProjectName + '_' + edtVersion.Text + '.7z';
+      SftpClient.PutFile(CompressedFileName,
+                                          ExtractFileName(CompressedFileName));
+      LogMessage('Archivo '+CompressedFileName+' enviado correctamente');
+    except
+      on E: Exception do
+      begin
+        WriteLn('Error al enviar archivo: ' + E.Message);
+      end;
+    end;
+  finally
+    // Cerrar conexión
+    if SftpClient.Active then
+      SftpClient.Close;
+  end;
+end;
+
 procedure TfrmPublish.btnGetDateClick(Sender: TObject);
 begin
   if (Length(edtVersion.Text) >= 3)  then
@@ -1398,13 +1439,12 @@ begin
   sAnalisisID := leCadIni('PublishExe', 'AnalisisID', '');
   // Leer archivos adicionales del exe (similar a extensiones)
   var filesExe := leCadIni('PublishExe', 'FilesExe', '');
-  // Cargar archivos adicionales en el ListBox
   lstFilesExe.Items.Clear;
   if filesExe <> '' then
   begin
     lstFilesExe.Items.StrictDelimiter := True;
     lstFilesExe.Items.Delimiter := ',';
-    lstFilesExe.Items.QuoteChar := '"';  // Reconocer comillas
+    lstFilesExe.Items.QuoteChar := '"';
     lstFilesExe.Items.CommaText := filesExe;
   end;
 end;
@@ -1553,21 +1593,17 @@ begin
   sExeDestPath := edtExeDestPath.Text;
   sAnalisisID := edtAnalisisID.Text;
   // Convertir lista de archivos exe a string separado por comas
+  var tempList: TStringList;
   var filesExe := '';
-//  var sFile:String;
-  for i := 0 to lstFilesExe.Items.Count - 1 do
-  begin
-    if i > 0 then
-      filesExe := filesExe + ',';
-
-    var item := lstFilesExe.Items[i];
-
-    // Si el elemento ya tiene comillas, usarlo tal como está
-    // Si no las tiene pero contiene espacios, añadir comillas
-    if (Pos(' ', item) > 0) and (item[1] <> '"') then
-      filesExe := filesExe + '"' + item + '"'
-    else
-      filesExe := filesExe + item;
+  tempList := TStringList.Create;
+  try
+    tempList.StrictDelimiter := True;
+    tempList.Delimiter := ',';
+    tempList.QuoteChar := '"';
+    tempList.Assign(lstFilesExe.Items);
+    filesExe := tempList.CommaText;
+  finally
+    tempList.Free;
   end;
   // Agregar estas nuevas entradas:
   esCadIni('PublishExe', 'ExeDestPath', sExeDestPath);

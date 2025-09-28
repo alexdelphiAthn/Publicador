@@ -706,6 +706,7 @@ object frmPublish: TfrmPublish
         Height = 25
         Caption = 'Enviar Fichero Destino'
         TabOrder = 13
+        OnClick = btnEnviarFTPExeClick
       end
     end
     object tsPerfiles: TTabSheet
