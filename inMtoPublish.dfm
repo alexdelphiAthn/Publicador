@@ -818,8 +818,9 @@ object frmPublish: TfrmPublish
     Top = 560
   end
   object pm1: TPopupMenu
-    Left = 600
-    Top = 512
+    OnPopup = pm1Popup
+    Left = 1008
+    Top = 560
     object mnuIrDireccion: TMenuItem
       Caption = 'Ir a direcci'#243'n de &Internet'
       OnClick = mnuIrDireccionClick

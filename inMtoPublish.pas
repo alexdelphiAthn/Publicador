@@ -167,7 +167,11 @@ type
     procedure mnuVerEditorClick(Sender: TObject);
     procedure mnuAbrirExploradorClick(Sender: TObject);
     procedure mnuIrDireccionClick(Sender: TObject);
+    procedure pm1Popup(Sender: TObject);
   private
+    FTextoLineaSeleccionada:string;
+    FLineaSeleccionada:Integer;
+    FURLEncontrada: string;
     sCurrentProfile:string;
     sOrigen, sDestino, sPassword, sServer, sServerPort, sExeDestPath,
     sAnalisisID, sFolderDest, sUserFtp, sPassFtp, sVersion, sProjFile,
@@ -209,8 +213,14 @@ type
     function CleanDuplicatePaths(const PathsString: string): string;
     procedure ProcessOutputLine(const Text: string);
     procedure UpdateProfileCombo;
-//    procedure UpdateButtonStates;
+    function ParsearLineaError(const Linea: string;
+                                out NombreArchivo: string;
+                                out NumeroLinea: Integer): Boolean;
+    procedure AbrirEnNotepad(const RutaArchivo: string; Linea: Integer);
+    function ExtraerRutaDesdeLineaDPR(const Linea, CarpetaBase: string): string;
     procedure InitProfile;
+    function ObtenerRutaCompleta(const NombreArchivo: string): string;
+    procedure AbrirEnExplorador(const Ruta: string);
   private
     FDelphiPaths: TDelphiPaths;
     F7zDLLHandle: THandle;
@@ -226,6 +236,51 @@ uses
 
 {$R *.dfm}
 {$R recursos.res}
+
+function TfrmPublish.ParsearLineaError(const Linea: string; out NombreArchivo: string;
+                                   out NumeroLinea: Integer): Boolean;
+var
+  PosParentesis, PosPunto: Integer;
+  ParteFinal, NumeroStr: string;
+begin
+  Result := False;
+  NombreArchivo := '';
+  NumeroLinea := 0;
+
+  // Buscar patrón: NombreArchivo.pas(número)
+  PosParentesis := Pos('(', Linea);
+  if PosParentesis > 0 then
+  begin
+    // Extraer la parte antes del paréntesis
+    ParteFinal := Copy(Linea, 1, PosParentesis - 1);
+
+    // Buscar el último punto antes de .pas
+    PosPunto := LastDelimiter('.', ParteFinal);
+    if PosPunto > 0 then
+    begin
+      // Verificar si termina en .pas, .dpr, .inc, etc.
+      if (Pos('.pas', LowerCase(ParteFinal)) > 0) or
+         (Pos('.dpr', LowerCase(ParteFinal)) > 0) or
+         (Pos('.inc', LowerCase(ParteFinal)) > 0) then
+      begin
+        // Buscar el inicio del nombre del archivo (después del último espacio)
+        var InicioArchivo := PosPunto;
+        while (InicioArchivo > 1) and (ParteFinal[InicioArchivo - 1] <> ' ') do
+          Dec(InicioArchivo);
+
+        NombreArchivo := Copy(ParteFinal, InicioArchivo, Length(ParteFinal) - InicioArchivo + 1);
+
+        // Extraer número de línea
+        var FinParentesis := Pos(')', Linea, PosParentesis);
+        if FinParentesis > PosParentesis then
+        begin
+          NumeroStr := Copy(Linea, PosParentesis + 1, FinParentesis - PosParentesis - 1);
+          Result := TryStrToInt(NumeroStr, NumeroLinea);
+        end;
+      end;
+    end;
+  end;
+end;
 
 procedure TfrmPublish.btnBorrarPerfilClick(Sender: TObject);
 var
@@ -255,13 +310,13 @@ begin
           InitControls;
         end;
         UpdateProfileCombo;
-        ShowMessage('Perfil eliminado correctamente');
+        LogMessage('Perfil eliminado correctamente');
       end
       else
-        ShowMessage('No se pudo eliminar el archivo del perfil');
+        LogMessage('No se pudo eliminar el archivo del perfil');
     end
     else
-      ShowMessage('El archivo del perfil no existe');
+      LogMessage('El archivo del perfil no existe');
   end;
 end;
 
@@ -1381,19 +1436,200 @@ begin
     raise Exception.Create('Error cargando 7z.dll');
 end;
 
-procedure TfrmPublish.mnuAbrirExploradorClick(Sender: TObject);
+function TfrmPublish.ObtenerRutaCompleta(const NombreArchivo: string): string;
+var
+  CarpetaProyecto: string;
+  ArchivoDPR: string;
+  LineasDPR: TStringList;
+  i: Integer;
+  Linea: string;
 begin
-//
+  Result := '';
+  CarpetaProyecto := TPath.GetDirectoryName(edtProjectPath.Text);
+  if not FileExists(CarpetaProyecto) then
+    Exit;
+  // Primero intentar en la misma carpeta del proyecto
+  Result := IncludeTrailingPathDelimiter(CarpetaProyecto) + NombreArchivo;
+  if FileExists(Result) then
+    Exit;
+  // Si no está ahí, buscar en el archivo DPR
+  ArchivoDPR := edtProjectPath.Text;
+  if FileExists(ArchivoDPR) then
+  begin
+    LineasDPR := TStringList.Create;
+    try
+      LineasDPR.LoadFromFile(ArchivoDPR);
+      for i := 0 to LineasDPR.Count - 1 do
+      begin
+        Linea := Trim(LineasDPR[i]);
+        // Buscar líneas que contengan el nombre del archivo
+        if (Pos(LowerCase(NombreArchivo), LowerCase(Linea)) > 0) and
+           (Pos(' in ', LowerCase(Linea)) > 0) then
+        begin
+          Result := ExtraerRutaDesdeLineaDPR(Linea, CarpetaProyecto);
+          if FileExists(Result) then
+            Exit;
+        end;
+      end;
+    finally
+      LineasDPR.Free;
+    end;
+  end;
+  // Si no se encuentra, devolver ruta en carpeta proyecto
+  Result := IncludeTrailingPathDelimiter(CarpetaProyecto) + NombreArchivo;
+end;
+
+function TfrmPublish.ExtraerRutaDesdeLineaDPR(const Linea, CarpetaBase: string): string;
+var
+  PosIn, PosComilla1, PosComilla2: Integer;
+  RutaRelativa: string;
+begin
+  Result := '';
+  // Buscar patrón: NombreUnit in 'ruta/archivo.pas'
+  PosIn := Pos(' in ', LowerCase(Linea));
+  if PosIn > 0 then
+  begin
+    PosComilla1 := Pos('''', Linea, PosIn);
+    if PosComilla1 > 0 then
+    begin
+      PosComilla2 := Pos('''', Linea, PosComilla1 + 1);
+      if PosComilla2 > PosComilla1 then
+      begin
+        RutaRelativa := Copy(Linea, PosComilla1 + 1, PosComilla2 - PosComilla1 - 1);
+        // Convertir ruta relativa a absoluta
+        if ExtractFilePath(RutaRelativa) = '' then
+          Result := IncludeTrailingPathDelimiter(CarpetaBase) + RutaRelativa
+        else
+          Result := ExpandFileName(IncludeTrailingPathDelimiter(CarpetaBase) + RutaRelativa);
+      end;
+    end;
+  end;
+end;
+
+procedure TfrmPublish.AbrirEnNotepad(const RutaArchivo: string; Linea: Integer);
+var
+  Parametros: string;
+begin
+  Parametros := Format('"%s" -n%d', [RutaArchivo, Linea]);
+  ShellExecute(Handle, 'open', 'notepad++.exe', PChar(Parametros), nil, SW_SHOWNORMAL);
+end;
+
+procedure TfrmPublish.mnuAbrirExploradorClick(Sender: TObject);
+var
+  NombreArchivo, RutaCompleta: string;
+  NumeroLinea: Integer;
+begin
+  if ParsearLineaError(FTextoLineaSeleccionada, NombreArchivo, NumeroLinea) then
+  begin
+    RutaCompleta := ObtenerRutaCompleta(NombreArchivo);
+
+    if FileExists(RutaCompleta) then
+      AbrirEnExplorador(RutaCompleta)
+    else
+    begin
+      // Si el archivo no existe, abrir la carpeta del proyecto
+      if DirectoryExists(TPath.GetDirectoryName(edtProjectPath.Text)) then
+        AbrirEnExplorador(TPath.GetDirectoryName(edtProjectPath.Text))
+      else
+        ShowMessage('Archivo no encontrado: ' + RutaCompleta);
+    end;
+  end;
+end;
+
+procedure TfrmPublish.AbrirEnExplorador(const Ruta: string);
+var
+  Parametros: string;
+begin
+  if FileExists(Ruta) then
+    // Abrir explorador y seleccionar el archivo
+    Parametros := '/select,"' + Ruta + '"'
+  else if DirectoryExists(Ruta) then
+    // Abrir la carpeta
+    Parametros := '"' + Ruta + '"'
+  else
+    Exit;
+  ShellExecute(Handle, 'open', 'explorer.exe', PChar(Parametros), nil, SW_SHOWNORMAL);
 end;
 
 procedure TfrmPublish.mnuIrDireccionClick(Sender: TObject);
 begin
-//
+  if FURLEncontrada <> '' then
+  begin
+    try
+      ShellExecute(Handle, 'open', PChar(FURLEncontrada), nil, nil, SW_SHOWNORMAL);
+    except
+      on E: Exception do
+        ShowMessage('Error al abrir la URL: ' + E.Message);
+    end;
+  end;
 end;
 
 procedure TfrmPublish.mnuVerEditorClick(Sender: TObject);
+var
+  NombreArchivo, RutaCompleta: string;
+  NumeroLinea: Integer;
 begin
-//
+  if ParsearLineaError(FTextoLineaSeleccionada, NombreArchivo, NumeroLinea) then
+  begin
+    RutaCompleta := ObtenerRutaCompleta(NombreArchivo);
+
+    if FileExists(RutaCompleta) then
+    begin
+      if NumeroLinea > 0 then
+        AbrirEnNotepad(RutaCompleta, NumeroLinea)
+      else
+        AbrirEnNotepad(RutaCompleta, 1); // Si no hay línea, ir al inicio
+    end
+    else
+      LogMessage('Archivo no encontrado: ' + RutaCompleta);
+  end;
+end;
+
+procedure TfrmPublish.pm1Popup(Sender: TObject);
+var
+  PosicionCursor: TPoint;
+  IndiceChar, IndiceLinea: Integer;
+  NombreArchivo: string;
+  NumeroLinea: Integer;
+begin
+  // Obtener la línea donde se hizo clic derecho
+  PosicionCursor := M1.ScreenToClient(Mouse.CursorPos);
+  IndiceChar := M1.Perform(EM_CHARFROMPOS, 0,
+                           MakeLParam(PosicionCursor.X, PosicionCursor.Y));
+  IndiceLinea := M1.Perform(EM_LINEFROMCHAR, IndiceChar, 0);
+
+  FLineaSeleccionada := IndiceLinea;
+
+  if (IndiceLinea >= 0) and (IndiceLinea < M1.Lines.Count) then
+  begin
+    FTextoLineaSeleccionada := M1.Lines[IndiceLinea];
+
+    // Verificar si la línea contiene información de archivo
+    if ParsearLineaError(FTextoLineaSeleccionada,
+                         NombreArchivo,
+                         NumeroLinea) then
+    begin
+      mnuAbrirExplorador.Enabled := True;
+      mnuVerEditor.Enabled := True;
+      mnuAbrirExplorador.Caption := 'Abrir en Explorador (' + ExtractFileName(NombreArchivo) + ')';
+      if NumeroLinea > 0 then
+        mnuVerEditor.Caption := 'Ver en Editor (línea ' + IntToStr(NumeroLinea) + ')'
+      else
+        mnuVerEditor.Caption := 'Ver en Editor';
+    end
+    else
+    begin
+      mnuAbrirExplorador.Enabled := False;
+      mnuVerEditor.Enabled := False;
+      mnuAbrirExplorador.Caption := 'Abrir en Explorador';
+      mnuVerEditor.Caption := 'Ver en Editor';
+    end;
+  end
+  else
+  begin
+    mnuAbrirExplorador.Enabled := False;
+    mnuVerEditor.Enabled := False;
+  end;
 end;
 
 function TfrmPublish.leCadINI(clave, cadena: string; defecto: string): string;
@@ -2237,7 +2473,7 @@ begin
   except
     on E: Exception do
     begin
-      ShowMessage('Error extrayendo DLL: ' + E.Message);
+      LogMessage('Error extrayendo DLL: ' + E.Message);
       Result := '';
     end;
   end;
