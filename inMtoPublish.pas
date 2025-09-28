@@ -1620,7 +1620,8 @@ begin
   begin
     // Si el archivo existe, abrir explorador y seleccionar el archivo
     Parametros := '/select,"' + Ruta + '"';
-    ShellExecute(Handle, 'open', 'explorer.exe', PChar(Parametros), nil, SW_SHOWNORMAL);
+    ShellExecute(Handle, 'open', 'explorer.exe',
+                                         PChar(Parametros), nil, SW_SHOWNORMAL);
   end
   else
   begin
@@ -1629,15 +1630,18 @@ begin
     if TDirectory.Exists(CarpetaRuta) then
     begin
       Parametros := '"' + CarpetaRuta + '"';
-      ShellExecute(Handle, 'open', 'explorer.exe', PChar(Parametros), nil, SW_SHOWNORMAL);
+      ShellExecute(Handle, 'open', 'explorer.exe',
+                                         PChar(Parametros), nil, SW_SHOWNORMAL);
     end
     else
     begin
       // Si tampoco existe la carpeta, abrir carpeta del proyecto
       if TDirectory.Exists(TPath.GetDirectoryName(edtProjectPath.Text)) then
       begin
-        Parametros := '"' + TPath.GetDirectoryName(edtProjectPath.Text) + '"';
-        ShellExecute(Handle, 'open', 'explorer.exe', PChar(Parametros), nil, SW_SHOWNORMAL);
+        Parametros := '/select,"' +
+          TPath.Combine(TPath.GetDirectoryName(edtProjectPath.Text),Ruta) + '"';
+        ShellExecute(Handle, 'open', 'explorer.exe',
+                     PChar(Parametros), nil, SW_SHOWNORMAL);
       end;
     end;
   end;
