@@ -1095,7 +1095,7 @@ begin
                                                IntToStr(FilesToCompress.Count));
       // PASO 4: Crear archivo comprimido
       CompressedFileName := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
-                ProjectName + '_' + edtVersion.Text + '_' + Version + '.7z';
+                ProjectName + '_' + edtVersion.Text + '.7z';
       LogMessage('Creando archivo comprimido: ' +
                                            ExtractFileName(CompressedFileName));
       Arch := CreateOutArchive(CLSID_CFormat7z);
@@ -1159,7 +1159,17 @@ end;
 procedure TfrmPublish.btnAddExeClick(Sender: TObject);
 begin
   if (edtAddExe.Text <> '') then
-    lstFilesExe.Items.Add(edtAddExe.Text);
+    if lstFilesExe.Items.IndexOf(edtAddExe.Text) = -1 then
+    begin
+      lstFilesExe.Items.Add(edtAddExe.Text);
+      edtAddExe.Clear;
+      LogMessage('Archivo agregado: ' + ExtractFileName(edtAddExe.Text));
+    end
+    else
+    begin
+      ShowMessage('El archivo ya está en la lista');
+      edtAddExe.Clear;
+    end;
 end;
 
 procedure TfrmPublish.btnAddExtClick(Sender: TObject);
@@ -1255,7 +1265,9 @@ end;
 
 procedure TfrmPublish.btnSelectLibVarGlobClick(Sender: TObject);
 begin
-//
+  dlgOpenPoject.Filter := 'Ficheros pascal .pas (*.pas)|*.pas';
+  if dlgOpenPoject.Execute() then
+    edtLibVarGlobPath.Text := dlgOpenPoject.FileName;
 end;
 
 procedure TfrmPublish.btnSelectProjectClick(Sender: TObject);
@@ -1363,6 +1375,7 @@ begin
   sFolderDest  := leCadIni('sFTP', 'FolderDest', '/');
   sVersion     := leCadIni('Compilation', 'Version', '109');
   sProjFile    := leCadINI('Compilation', 'ProjectFile', 'c:\MyProject');
+  sGlobFile    := leCadINI('Compilation', 'LibGlobFile', '');
   sVirusTotalAPI := leCadINI('Other', 'APIVirusTotal', '000000000000000000');
    //Leer extensiones del INI (guardadas como string separado por comas)
   extensiones := leCadIni('Files', 'Extensions', '*.exe,*.dll,*.txt');
@@ -1381,14 +1394,17 @@ begin
     // Agregar estos nuevos parámetros:
   sExeDestPath := leCadIni('PublishExe', 'ExeDestPath', 'c:\publish\');
   sAnalisisID := leCadIni('PublishExe', 'AnalisisID', '');
-
   // Leer archivos adicionales del exe (similar a extensiones)
   var filesExe := leCadIni('PublishExe', 'FilesExe', '');
 
   // Cargar archivos adicionales en el ListBox
   lstFilesExe.Items.Clear;
   if filesExe <> '' then
+  begin
+    lstFilesExe.Items.StrictDelimiter := True;
+    lstFilesExe.Items.QuoteChar := '"';  // Reconocer comillas
     lstFilesExe.Items.CommaText := filesExe;
+  end;
 end;
 procedure TfrmPublish.LogMessage(const Msg: string);
 begin
@@ -1534,16 +1550,14 @@ begin
   sAnalisisID := edtAnalisisID.Text;
 
   // Convertir lista de archivos exe a string separado por comas
-  var filesExe := '';
-  for i := 0 to lstFilesExe.Items.Count - 1 do
-  begin
-    if i > 0 then
-      filesExe := filesExe + ',';
-    filesExe := filesExe + lstFilesExe.Items[i];
-  end;
-
-  // ... código existente hasta grabar en INI ...
-
+var filesExe := '';
+for i := 0 to lstFilesExe.Items.Count - 1 do
+begin
+  if (i > 0) then
+    filesExe := filesExe + ',';
+  // Forzar comillas para rutas con espacios
+  filesExe := filesExe + '"' + lstFilesExe.Items[i] + '"';
+end;
   // Agregar estas nuevas entradas:
   esCadIni('PublishExe', 'ExeDestPath', sExeDestPath);
   esCadIni('PublishExe', 'AnalisisID', sAnalisisID);
@@ -1561,7 +1575,7 @@ var
 begin
   Result := False;
   Found := False;
-  if not FileExists(FileName) then
+  if (not FileExists(FileName)) then
     Exit;
   FileContent := TStringList.Create;
   try
