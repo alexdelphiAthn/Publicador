@@ -13,7 +13,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
-  System.NetConsts, JclSysUtils, JclBase,
+  System.NetConsts, JclSysUtils, JclBase, System.RegularExpressions,
   System.Classes, Vcl.Graphics, System.Masks, ShellAPI, Registry, System.Types,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, clGZip, clTcpClient,
   clSFtp, sevenzip, System.IniFiles, Vcl.ComCtrls, JvgPage, System.Net.URLClient,
@@ -221,6 +221,10 @@ type
     procedure InitProfile;
     function ObtenerRutaCompleta(const NombreArchivo: string): string;
     procedure AbrirEnExplorador(const Ruta: string);
+    function ExtraerURL(const Texto: string): string;
+    function DetectarRutaArchivo(const Linea: string;
+                                 out RutaArchivo: string): Boolean;
+    function EsURLValida(const URL: string): Boolean;
   private
     FDelphiPaths: TDelphiPaths;
     F7zDLLHandle: THandle;
@@ -237,8 +241,96 @@ uses
 {$R *.dfm}
 {$R recursos.res}
 
-function TfrmPublish.ParsearLineaError(const Linea: string; out NombreArchivo: string;
-                                   out NumeroLinea: Integer): Boolean;
+function TfrmPublish.ExtraerURL(const Texto: string): string;
+var
+  RegEx: TRegEx;
+  Match: TMatch;
+  URLsEncontradas: TArray<string>;
+  i: Integer;
+begin
+  Result := '';
+
+  // Patrones para diferentes tipos de URLs
+  SetLength(URLsEncontradas, 0);
+
+  // 1. URLs completas con protocolo
+  RegEx := TRegEx.Create('(https?://[^\s<>"{}|\\^`\[\]]+)', [roIgnoreCase]);
+  Match := RegEx.Match(Texto);
+  if Match.Success then
+  begin
+    SetLength(URLsEncontradas, Length(URLsEncontradas) + 1);
+    URLsEncontradas[High(URLsEncontradas)] := Match.Value;
+  end;
+
+  // 2. URLs sin protocolo pero con www
+  if Length(URLsEncontradas) = 0 then
+  begin
+    RegEx := TRegEx.Create('(www\.[^\s<>"{}|\\^`\[\]]+)', [roIgnoreCase]);
+    Match := RegEx.Match(Texto);
+    if Match.Success then
+    begin
+      SetLength(URLsEncontradas, Length(URLsEncontradas) + 1);
+      URLsEncontradas[High(URLsEncontradas)] := 'http://' + Match.Value;
+    end;
+  end;
+
+  // 3. IPs con puerto (para servidores locales)
+  if Length(URLsEncontradas) = 0 then
+  begin
+    RegEx := TRegEx.Create('((?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(?:/[^\s]*)?)', [roIgnoreCase]);
+    Match := RegEx.Match(Texto);
+    if Match.Success then
+    begin
+      SetLength(URLsEncontradas, Length(URLsEncontradas) + 1);
+      URLsEncontradas[High(URLsEncontradas)] := 'http://' + Match.Value;
+    end;
+  end;
+
+  // 4. localhost con puerto
+  if Length(URLsEncontradas) = 0 then
+  begin
+    RegEx := TRegEx.Create('(localhost:\d+(?:/[^\s]*)?)', [roIgnoreCase]);
+    Match := RegEx.Match(Texto);
+    if Match.Success then
+    begin
+      SetLength(URLsEncontradas, Length(URLsEncontradas) + 1);
+      URLsEncontradas[High(URLsEncontradas)] := 'http://' + Match.Value;
+    end;
+  end;
+
+  // Devolver la primera URL válida encontrada
+  for i := 0 to High(URLsEncontradas) do
+  begin
+    if EsURLValida(URLsEncontradas[i]) then
+    begin
+      Result := URLsEncontradas[i];
+      Break;
+    end;
+  end;
+end;
+
+function TfrmPublish.EsURLValida(const URL: string): Boolean;
+var
+  URLLower: string;
+begin
+  URLLower := LowerCase(URL);
+
+  Result := (Pos('http://', URLLower) = 1) or
+            (Pos('https://', URLLower) = 1) or
+            (Pos('ftp://', URLLower) = 1);
+
+  // Verificar que no termine en caracteres extraños
+  if Result then
+  begin
+    var UltimoChar := URL[Length(URL)];
+    Result := not CharInSet(UltimoChar, ['.', ',', ';', ')', ']', '}', '!',
+                                         '?']);
+  end;
+end;
+
+function TfrmPublish.ParsearLineaError(const Linea: string;
+                                     out NombreArchivo: string;
+                                     out NumeroLinea: Integer): Boolean;
 var
   PosParentesis, PosPunto: Integer;
   ParteFinal, NumeroStr: string;
@@ -247,38 +339,42 @@ begin
   NombreArchivo := '';
   NumeroLinea := 0;
 
-  // Buscar patrón: NombreArchivo.pas(número)
+  // Método 1: Buscar patrón de error del compilador: NombreArchivo.pas(número)
   PosParentesis := Pos('(', Linea);
   if PosParentesis > 0 then
   begin
-    // Extraer la parte antes del paréntesis
     ParteFinal := Copy(Linea, 1, PosParentesis - 1);
-
-    // Buscar el último punto antes de .pas
     PosPunto := LastDelimiter('.', ParteFinal);
+
     if PosPunto > 0 then
     begin
-      // Verificar si termina en .pas, .dpr, .inc, etc.
       if (Pos('.pas', LowerCase(ParteFinal)) > 0) or
          (Pos('.dpr', LowerCase(ParteFinal)) > 0) or
          (Pos('.inc', LowerCase(ParteFinal)) > 0) then
       begin
-        // Buscar el inicio del nombre del archivo (después del último espacio)
         var InicioArchivo := PosPunto;
         while (InicioArchivo > 1) and (ParteFinal[InicioArchivo - 1] <> ' ') do
           Dec(InicioArchivo);
 
         NombreArchivo := Copy(ParteFinal, InicioArchivo, Length(ParteFinal) - InicioArchivo + 1);
 
-        // Extraer número de línea
         var FinParentesis := Pos(')', Linea, PosParentesis);
         if FinParentesis > PosParentesis then
         begin
           NumeroStr := Copy(Linea, PosParentesis + 1, FinParentesis - PosParentesis - 1);
-          Result := TryStrToInt(NumeroStr, NumeroLinea);
+          TryStrToInt(NumeroStr, NumeroLinea);
         end;
+        Result := True;
+        Exit;
       end;
     end;
+  end;
+
+  // Método 2: Buscar cualquier ruta de archivo (C:\ruta\archivo.ext)
+  if not Result then
+  begin
+    Result := DetectarRutaArchivo(Linea, NombreArchivo);
+    NumeroLinea := 0;
   end;
 end;
 
@@ -1439,44 +1535,33 @@ end;
 function TfrmPublish.ObtenerRutaCompleta(const NombreArchivo: string): string;
 var
   CarpetaProyecto: string;
-  ArchivoDPR: string;
-  LineasDPR: TStringList;
-  i: Integer;
-  Linea: string;
 begin
-  Result := '';
-  CarpetaProyecto := TPath.GetDirectoryName(edtProjectPath.Text);
-  if not FileExists(CarpetaProyecto) then
-    Exit;
-  // Primero intentar en la misma carpeta del proyecto
-  Result := IncludeTrailingPathDelimiter(CarpetaProyecto) + NombreArchivo;
-  if FileExists(Result) then
-    Exit;
-  // Si no está ahí, buscar en el archivo DPR
-  ArchivoDPR := edtProjectPath.Text;
-  if FileExists(ArchivoDPR) then
+  CarpetaProyecto := edtProjectPath.Text;
+
+  // Si ya es una ruta completa, usarla directamente
+  if TPath.IsPathRooted(NombreArchivo) then
   begin
-    LineasDPR := TStringList.Create;
-    try
-      LineasDPR.LoadFromFile(ArchivoDPR);
-      for i := 0 to LineasDPR.Count - 1 do
-      begin
-        Linea := Trim(LineasDPR[i]);
-        // Buscar líneas que contengan el nombre del archivo
-        if (Pos(LowerCase(NombreArchivo), LowerCase(Linea)) > 0) and
-           (Pos(' in ', LowerCase(Linea)) > 0) then
-        begin
-          Result := ExtraerRutaDesdeLineaDPR(Linea, CarpetaProyecto);
-          if FileExists(Result) then
-            Exit;
-        end;
-      end;
-    finally
-      LineasDPR.Free;
-    end;
+    Result := NombreArchivo;
+    Exit;
   end;
-  // Si no se encuentra, devolver ruta en carpeta proyecto
-  Result := IncludeTrailingPathDelimiter(CarpetaProyecto) + NombreArchivo;
+
+  // Si es una ruta relativa, combinar con carpeta del proyecto
+  if not TDirectory.Exists(CarpetaProyecto) then
+  begin
+    Result := NombreArchivo; // Fallback
+    Exit;
+  end;
+
+  // Intentar en la misma carpeta del proyecto
+  Result := TPath.Combine(CarpetaProyecto, ExtractFileName(NombreArchivo));
+  if TFile.Exists(Result) then
+    Exit;
+
+  // Si no está ahí, buscar en el archivo DPR (método original si lo necesitas)
+  // ... resto del código si es necesario
+
+  // Si no se encuentra, devolver ruta combinada
+  Result := TPath.Combine(CarpetaProyecto, NombreArchivo);
 end;
 
 function TfrmPublish.ExtraerRutaDesdeLineaDPR(const Linea, CarpetaBase: string): string;
@@ -1522,33 +1607,123 @@ begin
   if ParsearLineaError(FTextoLineaSeleccionada, NombreArchivo, NumeroLinea) then
   begin
     RutaCompleta := ObtenerRutaCompleta(NombreArchivo);
-
-    if FileExists(RutaCompleta) then
-      AbrirEnExplorador(RutaCompleta)
-    else
-    begin
-      // Si el archivo no existe, abrir la carpeta del proyecto
-      if DirectoryExists(TPath.GetDirectoryName(edtProjectPath.Text)) then
-        AbrirEnExplorador(TPath.GetDirectoryName(edtProjectPath.Text))
-      else
-        ShowMessage('Archivo no encontrado: ' + RutaCompleta);
-    end;
+    AbrirEnExplorador(RutaCompleta);
   end;
 end;
 
 procedure TfrmPublish.AbrirEnExplorador(const Ruta: string);
 var
   Parametros: string;
+  CarpetaRuta: string;
 begin
   if FileExists(Ruta) then
-    // Abrir explorador y seleccionar el archivo
-    Parametros := '/select,"' + Ruta + '"'
-  else if DirectoryExists(Ruta) then
-    // Abrir la carpeta
-    Parametros := '"' + Ruta + '"'
+  begin
+    // Si el archivo existe, abrir explorador y seleccionar el archivo
+    Parametros := '/select,"' + Ruta + '"';
+    ShellExecute(Handle, 'open', 'explorer.exe', PChar(Parametros), nil, SW_SHOWNORMAL);
+  end
   else
-    Exit;
-  ShellExecute(Handle, 'open', 'explorer.exe', PChar(Parametros), nil, SW_SHOWNORMAL);
+  begin
+    // Si no existe el archivo, intentar abrir la carpeta
+    CarpetaRuta := TPath.GetDirectoryName(Ruta);
+    if TDirectory.Exists(CarpetaRuta) then
+    begin
+      Parametros := '"' + CarpetaRuta + '"';
+      ShellExecute(Handle, 'open', 'explorer.exe', PChar(Parametros), nil, SW_SHOWNORMAL);
+    end
+    else
+    begin
+      // Si tampoco existe la carpeta, abrir carpeta del proyecto
+      if TDirectory.Exists(TPath.GetDirectoryName(edtProjectPath.Text)) then
+      begin
+        Parametros := '"' + TPath.GetDirectoryName(edtProjectPath.Text) + '"';
+        ShellExecute(Handle, 'open', 'explorer.exe', PChar(Parametros), nil, SW_SHOWNORMAL);
+      end;
+    end;
+  end;
+end;
+
+function TfrmPublish.DetectarRutaArchivo(const Linea: string; out RutaArchivo: string): Boolean;
+var
+  i: Integer;
+  function ExtraerRutaDesdePos(const Linea: string; PosInicio: Integer): string;
+  var
+    PosFin: Integer;
+    RutaCandidato: string;
+    CaracteresInvalidos: TArray<Char>;
+    i: Integer;
+    EsValido: Boolean;
+  begin
+    Result := '';
+    CaracteresInvalidos := TPath.GetInvalidPathChars();
+
+    // Buscar el final de la ruta
+    PosFin := PosInicio;
+    while PosFin <= Length(Linea) do
+    begin
+      // Verificar si el carácter es válido para rutas
+      EsValido := True;
+      for i := 0 to High(CaracteresInvalidos) do
+      begin
+        if Linea[PosFin] = CaracteresInvalidos[i] then
+        begin
+          EsValido := False;
+          Break;
+        end;
+      end;
+
+      // También parar en espacios seguidos de caracteres que indican fin de ruta
+      if (Linea[PosFin] = ' ') and (PosFin < Length(Linea)) then
+      begin
+        if CharInSet(Linea[PosFin + 1], [',', ';', ')', ']', #13, #10]) then
+          Break;
+      end;
+
+      if not EsValido then
+        Break;
+
+      Inc(PosFin);
+    end;
+
+    Dec(PosFin); // Ajustar posición
+
+    if PosFin > PosInicio then
+    begin
+      RutaCandidato := Copy(Linea, PosInicio, PosFin - PosInicio + 1);
+      RutaCandidato := Trim(RutaCandidato);
+
+      // Usar TPath para validar
+      try
+        if TPath.IsPathRooted(RutaCandidato) and
+           (TPath.HasExtension(RutaCandidato) or
+            TDirectory.Exists(TPath.GetDirectoryName(RutaCandidato))) then
+          Result := RutaCandidato;
+      except
+        // Si TPath lanza excepción, la ruta no es válida
+        Result := '';
+      end;
+    end;
+  end;
+begin
+  Result := False;
+  RutaArchivo := '';
+
+  // Buscar patrón C:\ o D:\ etc.
+  for i := 1 to Length(Linea) - 2 do
+  begin
+    if (Linea[i] in ['A'..'Z', 'a'..'z']) and
+       (Linea[i + 1] = ':') and
+       (Linea[i + 2] = '\') then
+    begin
+      // Encontró inicio de ruta, extraer la ruta completa
+      RutaArchivo := ExtraerRutaDesdePos(Linea, i);
+      if (RutaArchivo <> '') and TPath.IsPathRooted(RutaArchivo) then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
 end;
 
 procedure TfrmPublish.mnuIrDireccionClick(Sender: TObject);
@@ -1569,9 +1744,10 @@ var
   NombreArchivo, RutaCompleta: string;
   NumeroLinea: Integer;
 begin
+  var sCarpeta := TPath.GetDirectoryName(edtProjectPath.Text);
   if ParsearLineaError(FTextoLineaSeleccionada, NombreArchivo, NumeroLinea) then
   begin
-    RutaCompleta := ObtenerRutaCompleta(NombreArchivo);
+    RutaCompleta := sCarpeta +'\'+ NombreArchivo;
 
     if FileExists(RutaCompleta) then
     begin
@@ -1587,35 +1763,62 @@ end;
 
 procedure TfrmPublish.pm1Popup(Sender: TObject);
 var
-  PosicionCursor: TPoint;
-  IndiceChar, IndiceLinea: Integer;
+  IndiceLinea: Integer;
   NombreArchivo: string;
   NumeroLinea: Integer;
+  URLEncontrada: string;
+  PuntoMouse: TPoint;
 begin
-  // Obtener la línea donde se hizo clic derecho
-  PosicionCursor := M1.ScreenToClient(Mouse.CursorPos);
-  IndiceChar := M1.Perform(EM_CHARFROMPOS, 0,
-                           MakeLParam(PosicionCursor.X, PosicionCursor.Y));
-  IndiceLinea := M1.Perform(EM_LINEFROMCHAR, IndiceChar, 0);
-
-  FLineaSeleccionada := IndiceLinea;
-
+  GetCursorPos(PuntoMouse);
+  PuntoMouse := M1.ScreenToClient(PuntoMouse);
+  // Intentar varios métodos hasta que uno funcione
+  IndiceLinea := -1;
+  // Método 1: Posición del cursor
+  try
+    IndiceLinea := M1.Perform(EM_LINEFROMCHAR, M1.SelStart, 0);
+  except
+    IndiceLinea := -1;
+  end;
   if (IndiceLinea >= 0) and (IndiceLinea < M1.Lines.Count) then
   begin
     FTextoLineaSeleccionada := M1.Lines[IndiceLinea];
 
-    // Verificar si la línea contiene información de archivo
-    if ParsearLineaError(FTextoLineaSeleccionada,
-                         NombreArchivo,
-                         NumeroLinea) then
+    // Buscar URL en la línea
+    URLEncontrada := ExtraerURL(FTextoLineaSeleccionada);
+    if URLEncontrada <> '' then
+    begin
+      FURLEncontrada := URLEncontrada;
+      mnuIrDireccion.Enabled := True;
+      mnuIrDireccion.Caption := 'Ir a: ' + Copy(URLEncontrada, 1, 40) +
+                               IfThen(Length(URLEncontrada) > 40, '...', '');
+    end
+    else
+    begin
+      mnuIrDireccion.Enabled := False;
+      mnuIrDireccion.Caption := 'Ir a Dirección';
+    end;
+
+    // Verificar si la línea contiene ruta de archivo
+    if ParsearLineaError(FTextoLineaSeleccionada, NombreArchivo, NumeroLinea) then
     begin
       mnuAbrirExplorador.Enabled := True;
-      mnuVerEditor.Enabled := True;
       mnuAbrirExplorador.Caption := 'Abrir en Explorador (' + ExtractFileName(NombreArchivo) + ')';
-      if NumeroLinea > 0 then
-        mnuVerEditor.Caption := 'Ver en Editor (línea ' + IntToStr(NumeroLinea) + ')'
+
+      // Solo mostrar editor para archivos de código
+      var Extension := LowerCase(ExtractFileExt(NombreArchivo));
+      if (Extension = '.pas') or (Extension = '.dpr') or (Extension = '.inc') then
+      begin
+        mnuVerEditor.Enabled := True;
+        if NumeroLinea > 0 then
+          mnuVerEditor.Caption := 'Ver en Editor (línea ' + IntToStr(NumeroLinea) + ')'
+        else
+          mnuVerEditor.Caption := 'Ver en Editor';
+      end
       else
+      begin
+        mnuVerEditor.Enabled := False;
         mnuVerEditor.Caption := 'Ver en Editor';
+      end;
     end
     else
     begin
@@ -1624,11 +1827,6 @@ begin
       mnuAbrirExplorador.Caption := 'Abrir en Explorador';
       mnuVerEditor.Caption := 'Ver en Editor';
     end;
-  end
-  else
-  begin
-    mnuAbrirExplorador.Enabled := False;
-    mnuVerEditor.Enabled := False;
   end;
 end;
 
