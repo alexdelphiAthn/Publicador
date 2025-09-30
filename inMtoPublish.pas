@@ -22,6 +22,12 @@ uses
   clTcpClientSsh, Vcl.ExtCtrls, JvExStdCtrls, JvCombobox, Vcl.Menus, OtlCommon,
   OtlTask, OtlTaskControl, OtlParallel, system.UITypes;
 
+const
+  MSG_LOG = 1;
+  MSG_PROGRESS = 2;
+  MSG_COMPLETE = 3;
+  MSG_ERROR = 4;
+
 type
   TDelphiPaths = record
     UnitPaths: string;      // Para -U
@@ -229,6 +235,9 @@ type
     function DetectarRutaArchivo(const Linea: string;
                                  out RutaArchivo: string): Boolean;
     function EsURLValida(const URL: string): Boolean;
+//    procedure OnCompileTaskMessage(const task: IOmniTaskControl; const msg: TOmniMessage);
+//    procedure OnCompileTaskTerminated(const task: IOmniTaskControl);
+    procedure LlamarCompilacion;
   private
     FCompileTask: IOmniTaskControl;
     FDelphiPaths: TDelphiPaths;
@@ -254,10 +263,8 @@ var
   i: Integer;
 begin
   Result := '';
-
   // Patrones para diferentes tipos de URLs
   SetLength(URLsEncontradas, 0);
-
   // 1. URLs completas con protocolo
   RegEx := TRegEx.Create('(https?://[^\s<>"{}|\\^`\[\]]+)', [roIgnoreCase]);
   Match := RegEx.Match(Texto);
@@ -266,7 +273,6 @@ begin
     SetLength(URLsEncontradas, Length(URLsEncontradas) + 1);
     URLsEncontradas[High(URLsEncontradas)] := Match.Value;
   end;
-
   // 2. URLs sin protocolo pero con www
   if Length(URLsEncontradas) = 0 then
   begin
@@ -278,7 +284,6 @@ begin
       URLsEncontradas[High(URLsEncontradas)] := 'http://' + Match.Value;
     end;
   end;
-
   // 3. IPs con puerto (para servidores locales)
   if Length(URLsEncontradas) = 0 then
   begin
@@ -290,7 +295,6 @@ begin
       URLsEncontradas[High(URLsEncontradas)] := 'http://' + Match.Value;
     end;
   end;
-
   // 4. localhost con puerto
   if Length(URLsEncontradas) = 0 then
   begin
@@ -302,7 +306,6 @@ begin
       URLsEncontradas[High(URLsEncontradas)] := 'http://' + Match.Value;
     end;
   end;
-
   // Devolver la primera URL válida encontrada
   for i := 0 to High(URLsEncontradas) do
   begin
@@ -313,18 +316,15 @@ begin
     end;
   end;
 end;
-
 function TfrmPublish.EsURLValida(const URL: string): Boolean;
 var
   URLLower: string;
   UltimoChar:Char;
 begin
   URLLower := LowerCase(URL);
-
   Result := (Pos('http://', URLLower) = 1) or
             (Pos('https://', URLLower) = 1) or
             (Pos('ftp://', URLLower) = 1);
-
   // Verificar que no termine en caracteres extraños
   if Result then
   begin
@@ -487,7 +487,7 @@ begin
      (Pos('<', NombrePerfil) > 0) or (Pos('>', NombrePerfil) > 0) or
      (Pos('|', NombrePerfil) > 0) or (Pos('_', NombrePerfil) > 0) then
   begin
-    ShowMessage('El nombre del perfil contiene caracteres no válidos');
+    LogMessage('El nombre del perfil contiene caracteres no válidos');
     Exit;
   end;
   AppName := TPath.GetFileNameWithoutExtension(ExtractFileName(ParamStr(0)));
@@ -495,7 +495,7 @@ begin
   // Verificar si ya existe
   if FileExists(NewFile) then
   begin
-    ShowMessage('Ya existe un perfil con ese nombre');
+    LogMessage('Ya existe un perfil con ese nombre');
     Exit;
   end;
   // Guardar configuración actual primero
@@ -512,15 +512,15 @@ begin
     begin
       UpdateProfileCombo;
       cmbPerfiles.ItemIndex := cmbPerfiles.Items.IndexOf(NombrePerfil);
-      ShowMessage('Perfil "' + NombrePerfil + '" creado correctamente');
+      LogMessage('Perfil "' + NombrePerfil + '" creado correctamente');
       LogMessage('Nuevo perfil creado: ' + NombrePerfil);
     end
     else
-      ShowMessage('Error al crear el perfil');
+      LogMessage('Error al crear el perfil');
   end
   else
   begin
-    ShowMessage('No se pudo encontrar el perfil actual para copiar');
+    LogMessage('No se pudo encontrar el perfil actual para copiar');
   end;
 end;
 
@@ -962,7 +962,7 @@ var
 begin
   if not FileExists(edtDestino.Text) then
   begin
-    ShowMessage('El fichero comprimido: ' + edtDestino.Text + ' no existe');
+    LogMessage('El fichero comprimido: ' + edtDestino.Text + ' no existe');
   end
   else
   begin
@@ -1172,7 +1172,7 @@ begin
     DirectorioBase := IncludeTrailingPathDelimiter(edtOrigen.Text);
     LenBase := Length(DirectorioBase);
     RecorrerCarpetasConTDirectory(edtOrigen.Text);
-    for AFileName in aFiles  do
+    for AFileName in aFiles do
     begin
      // Quitar el directorio base para obtener ruta relativa
       if Pos(UpperCase(DirectorioBase), UpperCase(AFileName)) = 1 then
@@ -1321,7 +1321,7 @@ begin
     on E: Exception do
     begin
       LogMessage('ERROR CRÍTICO: ' + E.Message);
-      ShowMessage('Error durante la compresión: ' + E.Message);
+      LogMessage('Error durante la compresión: ' + E.Message);
     end;
   end;
   btnComprimirExe.Enabled := True;
@@ -1345,7 +1345,7 @@ begin
     end
     else
     begin
-      ShowMessage('El archivo ya está en la lista');
+      LogMessage('El archivo ya está en la lista');
       edtAddExe.Clear;
     end;
 end;
@@ -1596,7 +1596,6 @@ end;
 //    end;
 //  end;
 //end;
-
 procedure TfrmPublish.AbrirEnNotepad(const RutaArchivo: string; Linea: Integer);
 var
   Parametros: string;
@@ -1666,7 +1665,6 @@ var
   begin
     Result := '';
     CaracteresInvalidos := TPath.GetInvalidPathChars();
-
     // Buscar el final de la ruta
     PosFin := PosInicio;
     while PosFin <= Length(Linea) do
@@ -1681,27 +1679,21 @@ var
           Break;
         end;
       end;
-
       // También parar en espacios seguidos de caracteres que indican fin de ruta
       if (Linea[PosFin] = ' ') and (PosFin < Length(Linea)) then
       begin
         if CharInSet(Linea[PosFin + 1], [',', ';', ')', ']', #13, #10]) then
           Break;
       end;
-
       if not EsValido then
         Break;
-
       Inc(PosFin);
     end;
-
     Dec(PosFin); // Ajustar posición
-
     if PosFin > PosInicio then
     begin
       RutaCandidato := Copy(Linea, PosInicio, PosFin - PosInicio + 1);
       RutaCandidato := Trim(RutaCandidato);
-
       // Usar TPath para validar
       try
         if TPath.IsPathRooted(RutaCandidato) and
@@ -1717,7 +1709,6 @@ var
 begin
   Result := False;
   RutaArchivo := '';
-
   // Buscar patrón C:\ o D:\ etc.
   for i := 1 to Length(Linea) - 2 do
   begin
@@ -1744,7 +1735,7 @@ begin
       ShellExecute(Handle, 'open', PChar(FURLEncontrada), nil, nil, SW_SHOWNORMAL);
     except
       on E: Exception do
-        ShowMessage('Error al abrir la URL: ' + E.Message);
+        LogMessage('Error al abrir la URL: ' + E.Message);
     end;
   end;
 end;
@@ -1758,7 +1749,6 @@ begin
   if ParsearLineaError(FTextoLineaSeleccionada, NombreArchivo, NumeroLinea) then
   begin
     RutaCompleta := sCarpeta +'\'+ NombreArchivo;
-
     if FileExists(RutaCompleta) then
     begin
       if NumeroLinea > 0 then
@@ -2307,62 +2297,120 @@ begin
 end;
 
 procedure TfrmPublish.btnCompileClick(Sender: TObject);
-var
-  NewVersion: string;
 begin
-  // Validar campos
+  // Validar campos ANTES de lanzar el hilo
   if not FileExists(edtProjectPath.Text) then
   begin
     LogMessage('Seleccione un archivo de proyecto válido (.dpr)');
     Exit;
   end;
-  if chkVersionarVariable.Checked = False then
+
+  if not chkVersionarVariable.Checked then
     if not FileExists(edtLibVarGlobPath.Text) then
     begin
       LogMessage('Seleccione el archivo inLibVarGlob.pas');
       Exit;
     end;
+
+  if Assigned(FCompileTask) then
+  begin
+    LogMessage('Ya hay una compilación en curso');
+    Exit;
+  end;
+
+  // COPIAR todos los valores necesarios a las variables privadas
+  sVersion := edtVersion.Text;
+  sGlobFile := edtLibVarGlobPath.Text;
+  sProjFile := edtProjectPath.Text;
+  sDelphiBasePath := edtBasePath.Text;
+  sDelphiCommonPath := edtCommonPath.Text;
+  sCompilerName := edtCompilerName.Text;
+  sDelphiVersion := edtVersionDelphi.Text;
+  sPlatform := edtPlatForm.Text;
+  sBuildConfiguration := edtConfig.Text;
+  sOutputDirectory := edtOutputExe.Text;
+  sAdditionalParams := edtParamAdd.Text;
+
   btnCompile.Enabled := False;
+
+  FCompileTask := CreateTask(
+    procedure(const task: IOmniTask)
+    begin
+      LlamarCompilacion;
+    end,
+    'CompileTask'
+  ).OnTerminated(
+    procedure(const task: IOmniTaskControl)
+    begin
+      FCompileTask := nil;
+      TThread.Queue(nil, procedure
+      begin
+        btnCompile.Enabled := True;
+      end);
+    end
+  ).Run;
+end;
+
+procedure TfrmPublish.LlamarCompilacion;
+var
+  NewVersion: string;
+  VersionarVariable: Boolean;
+begin
   try
-    NewVersion := edtVersion.Text;
+    // Leer checkbox desde el hilo principal (única excepción necesaria)
+    TThread.Synchronize(nil, procedure
+    begin
+      VersionarVariable := chkVersionarVariable.Checked;
+    end);
+
+    NewVersion := sVersion; // Usar variable copiada, NO el control
+
     LogMessage('=== INICIANDO COMPILACIÓN ===');
+
     // Paso 1: Actualizar versión en el archivo
-//    ProgressBar1.Position := 25;
-    if chkVersionarVariable.Checked = False then
-      if not UpdateVersionInFile(edtLibVarGlobPath.Text, NewVersion) then
+    if not VersionarVariable then
+    begin
+      if not UpdateVersionInFile(sGlobFile, NewVersion) then
       begin
         LogMessage('ERROR: No se pudo actualizar la versión');
         Exit;
       end
       else
       begin
-        LogMessage('Actualizando versión en ' + ExtractFileName(edtLibVarGlobPath.Text));
+        LogMessage('Actualizando versión en ' + ExtractFileName(sGlobFile));
         LogMessage('Versión actualizada correctamente');
         LogMessage('Nueva versión: ' + NewVersion);
       end;
+    end;
+
     // Paso 2: Compilar proyecto
-//    ProgressBar1.Position := 50;
     LogMessage('Iniciando compilación del proyecto...');
+
     if CompileProject then
     begin
       LogMessage('=== COMPILACIÓN EXITOSA ===');
-      // Paso 3: Enviar a VirusTotal si está habilitado
-//      if chkSendToVirusTotal.Checked then
-//      begin
-//        EnviarVirusTotal;
-//      end;
-//      ProgressBar1.Position := 100;
-      LogMessage('Proceso completado exitosamente!' + #13#10 +
-                  'Versión: ' + NewVersion);
+      LogMessage('Proceso completado exitosamente!' + #13#10 + 'Versión: ' + NewVersion);
+
+      TThread.Synchronize(nil, procedure
+      begin
+        LogMessage('Compilación completada: ' + NewVersion);
+      end);
     end
     else
     begin
       LogMessage('ERROR: Fallo en la compilación');
       LogMessage('Error en la compilación. Revise el log.');
     end;
-  finally
-//    ProgressBar1.Visible := False;
-    btnCompile.Enabled := True;
+
+  except
+    on E: Exception do
+    begin
+      LogMessage('ERROR CRÍTICO: ' + E.Message);
+      TThread.Synchronize(nil, procedure
+      begin
+        LogMessage('Error durante la compilación: ' + E.Message);
+      end);
+    end;
   end;
 end;
 
@@ -2465,7 +2513,7 @@ begin
     Boundary := 'FormBoundary' + FormatDateTime('yyyymmddhhnnsszzz', Now);
     HTTPClient.ContentType := 'multipart/form-data; boundary=' + Boundary;
     // Leer archivo
-    FileStream := TFileStream.Create(FilePath, fmOpenRead);
+    FileStream := TFileStream.Create(FilePath, fmOpenRead or fmShareDenyNone);
     try
       SetLength(FileContent, FileStream.Size);
       FileStream.ReadBuffer(FileContent[0], FileStream.Size);
