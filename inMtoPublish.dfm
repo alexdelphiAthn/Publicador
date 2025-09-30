@@ -10,9 +10,11 @@ object frmPublish: TfrmPublish
   Font.Height = -16
   Font.Name = 'Segoe UI'
   Font.Style = []
+  OldCreateOrder = True
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  PixelsPerInch = 96
   TextHeight = 21
   object spl1: TSplitter
     Left = 0
@@ -51,15 +53,13 @@ object frmPublish: TfrmPublish
     PopupMenu = pm1
     ScrollBars = ssVertical
     TabOrder = 0
-    ExplicitTop = 358
-    ExplicitWidth = 1067
   end
   object jpcPestanas: TJvgPageControl
     Left = 0
     Top = 0
     Width = 1071
     Height = 356
-    ActivePage = tsPublicarExe
+    ActivePage = tsCompilacion
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -95,8 +95,6 @@ object frmPublish: TfrmPublish
     TabSelectedStyle.Gradient.Active = False
     TabSelectedStyle.Gradient.Orientation = fgdHorizontal
     Options = [ftoAutoFontDirection, ftoExcludeGlyphs]
-    ExplicitWidth = 1067
-    ExplicitHeight = 355
     object tsFicheros: TTabSheet
       Caption = 'Ficheros C'#243'digo Fuente'
       object lblOrigen: TLabel
@@ -769,12 +767,6 @@ object frmPublish: TfrmPublish
         OnClick = btnUsarPerfilClick
       end
     end
-  end
-  object clsftp3: TclSFtp
-    SshAgent = 'Clever_Internet_Suite'
-    CharSet = 'utf-8'
-    Left = 176
-    Top = 560
   end
   object sd7z: TSaveDialog
     Filter = 'Archivo Comprimido 7z (*.7z)|*.7z'

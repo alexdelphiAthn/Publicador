@@ -15,11 +15,7 @@ type
     HasBOM: Boolean;
   end;
 
-//  function IsOpenMDI(sCaptionName: String; Owner : TComponent):boolean;
-  function EncontrarObjeto(oControl:TComponent; sBusquedaTipo:String):TObject; overload;
-  function EncontrarObjeto(oControl:TComponent; sBusquedaTipo:String; sNameObject:String):TObject; overload;
   function GetVolumeID(DriveChar: Char): String;
-  function FindFormOwner(oSender: TObject):TComponent;
   procedure SetDateTime(Year, Month, Day, Hour, Minu, Sec, MSec: Word);
   procedure GetImageURL(sUrl: String; var memStream: TMemoryStream);
   procedure ExecuteAndWait(const aCommando: string);
@@ -29,7 +25,6 @@ type
   function GetWindowsVersion: string;
   function HayInternet:Boolean;
   function HayInternetConPing: Boolean;
-  function IsWebServiceUp(const AUrl: string): Boolean;
   function GetTextFile(const rutaArchivo: string): string;
   function DetectarBOM(const rutaArchivo: string): TEncodingInfo;
   function EsProbablementeUTF8(const rutaArchivo: string): Boolean;
@@ -118,27 +113,6 @@ begin
     finally
       InternetCloseHandle(hSession);
     end;
-  end;
-end;
-
-function IsWebServiceUp(const AUrl: string): Boolean;
-var
-  HttpClient: THTTPClient;
-  Response: IHTTPResponse;
-begin
-  Result := False;
-  HttpClient := THTTPClient.Create;
-  try
-    HttpClient.ConnectionTimeout := 5000;  // 5 segundos
-    HttpClient.ResponseTimeout := 10000;   // 10 segundos
-    try
-      Response := HttpClient.Head(AUrl);
-      Result := (Response.StatusCode >= 200) and (Response.StatusCode < 400);
-    except
-      Result := False;
-    end;
-  finally
-    HttpClient.Free;
   end;
 end;
 
@@ -269,35 +243,6 @@ begin
    end
    else
        Result := '';
-end;
-
-function FindFormOwner(oSender: TObject):TComponent;
-begin
-  while not oSender.InheritsFrom(TForm) do
-    oSender := TObject((oSender as TComponent).Owner);
-  if Assigned(oSender) then
-    Result := (oSender as Tcomponent);
-
-end;
-
-function EncontrarObjeto(oControl:TComponent; sBusquedaTipo:String):TObject; overload;
-var
-  i:Integer;
-begin
-    for i := 0 to oControl.ComponentCount - 1 do
-      if oControl.Components[i].ClassName = sBusquedaTipo then
-        Result := oControl.Components[i];
-end;
-
-function EncontrarObjeto(oControl:TComponent; sBusquedaTipo:String; sNameObject:STring):TObject; overload;
-var
-  i:Integer;
-
-begin
-    for i := 0 to oControl.ComponentCount - 1 do
-      if oControl.Components[i].ClassName = sBusquedaTipo then
-        if oControl.Components[i].Name = sNameObject then
-          Result := oControl.Components[i];
 end;
 
 procedure GetImageURL(sUrl: String; var memStream: TMemoryStream);

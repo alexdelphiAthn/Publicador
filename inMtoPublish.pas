@@ -16,10 +16,11 @@ uses
   System.NetConsts, JclSysUtils, JclBase, System.RegularExpressions,
   System.Classes, Vcl.Graphics, System.Masks, ShellAPI, Registry, System.Types,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, clGZip, clTcpClient,
-  clSFtp, sevenzip, System.IniFiles, Vcl.ComCtrls, JvgPage, System.Net.URLClient,
-  System.IOUtils, System.StrUtils, System.DateUtils, System.Net.HttpClient,
-  System.Net.HttpClientComponent, System.JSON, JvDialogs, clTcpClientSsh,
-  Vcl.ExtCtrls, JvExStdCtrls, JvCombobox, Vcl.Menus;
+  clSFtp, sevenzip, System.IniFiles, Vcl.ComCtrls, JvgPage,
+  System.Net.URLClient, System.IOUtils, System.StrUtils, System.DateUtils,
+  System.Net.HttpClient, System.Net.HttpClientComponent, System.JSON, JvDialogs,
+  clTcpClientSsh, Vcl.ExtCtrls, JvExStdCtrls, JvCombobox, Vcl.Menus, OtlCommon,
+  OtlTask, OtlTaskControl, OtlParallel, system.UITypes;
 
 type
   TDelphiPaths = record
@@ -39,7 +40,6 @@ type
     IndentLevel: Integer;
   end;
   TfrmPublish = class(TForm)
-    clsftp3: TclSFtp;
     m1: TMemo;
     sd7z: TSaveDialog;
     flpndlg1: TFileOpenDialog;
@@ -144,8 +144,10 @@ type
     procedure btnOrigenClick(Sender: TObject);
     procedure btnDestinoClick(Sender: TObject);
     procedure btnEnviarFTPClick(Sender: TObject);
-    procedure sFtpClientVerifyServer(Sender: TObject; const AHost, AKeyType,
-      AFingerPrint, AHostKey: string; var AVerified: Boolean);
+    procedure sFtpClientVerifyServer(Sender: TObject;
+                                     const AHost, AKeyType,
+                                     AFingerPrint, AHostKey: string;
+                                     var AVerified: Boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure btnAddExtClick(Sender: TObject);
@@ -170,7 +172,7 @@ type
     procedure pm1Popup(Sender: TObject);
   private
     FTextoLineaSeleccionada:string;
-    FLineaSeleccionada:Integer;
+//    FLineaSeleccionada:Integer;
     FURLEncontrada: string;
     sCurrentProfile:string;
     sOrigen, sDestino, sPassword, sServer, sServerPort, sExeDestPath,
@@ -178,8 +180,10 @@ type
     sGlobFile:string;
     sVirusTotalAPI : string;
     aFiles:TStringList;
-    sDelphiBasePath: string;      // C:\Program Files (x86)\Embarcadero\Studio\20.0
-    sDelphiCommonPath: string;    // C:\Users\Public\Documents\Embarcadero\Studio\20.0
+    // C:\Program Files (x86)\Embarcadero\Studio\20.0
+    sDelphiBasePath: string;
+    // C:\Users\Public\Documents\Embarcadero\Studio\20.0
+    sDelphiCommonPath: string;
     sCompilerName: string;        // dcc32.exe o dcc64.exe
     sDelphiVersion: string;       // 20.0, 21.0, 22.0, etc.
     sPlatform: string;            // Win32, Win64, Android, etc.
@@ -190,7 +194,7 @@ type
   private
     function FormatFileSize(Size: Int64): string;
     procedure LogMessage(const Msg: string);
-    procedure ShowArchiveStatistics(Arch: I7zInArchive);
+//    procedure ShowArchiveStatistics(Arch: I7zInArchive);
     procedure RecorrerCarpetasConTDirectory(const CarpetaRaiz: string);
     function ExtraerDLLDeRecurso: string;
     procedure MakeDll;
@@ -207,7 +211,7 @@ type
     function SendToVirusTotal(FilePath: string): Boolean;
     function GetAnalysisResult(const AnalysisID: string): string;
     procedure EnviarVirusTotal;
-    function ForceFileAnalysis(const FileHash: string): Boolean;
+//    function ForceFileAnalysis(const FileHash: string): Boolean;
     function GetDelphiRegistryPaths: string;
     function ReadCompleteDelphiPaths(const DelphiVersion: string): TDelphiPaths;
     function CleanDuplicatePaths(const PathsString: string): string;
@@ -217,7 +221,7 @@ type
                                 out NombreArchivo: string;
                                 out NumeroLinea: Integer): Boolean;
     procedure AbrirEnNotepad(const RutaArchivo: string; Linea: Integer);
-    function ExtraerRutaDesdeLineaDPR(const Linea, CarpetaBase: string): string;
+//    function ExtraerRutaDesdeLineaDPR(const Linea, CarpetaBase: string): string;
     procedure InitProfile;
     function ObtenerRutaCompleta(const NombreArchivo: string): string;
     procedure AbrirEnExplorador(const Ruta: string);
@@ -226,6 +230,7 @@ type
                                  out RutaArchivo: string): Boolean;
     function EsURLValida(const URL: string): Boolean;
   private
+    FCompileTask: IOmniTaskControl;
     FDelphiPaths: TDelphiPaths;
     F7zDLLHandle: THandle;
   end;
@@ -312,6 +317,7 @@ end;
 function TfrmPublish.EsURLValida(const URL: string): Boolean;
 var
   URLLower: string;
+  UltimoChar:Char;
 begin
   URLLower := LowerCase(URL);
 
@@ -322,7 +328,7 @@ begin
   // Verificar que no termine en caracteres extraños
   if Result then
   begin
-    var UltimoChar := URL[Length(URL)];
+    UltimoChar := URL[Length(URL)];
     Result := not CharInSet(UltimoChar, ['.', ',', ';', ')', ']', '}', '!',
                                          '?']);
   end;
@@ -332,7 +338,7 @@ function TfrmPublish.ParsearLineaError(const Linea: string;
                                      out NombreArchivo: string;
                                      out NumeroLinea: Integer): Boolean;
 var
-  PosParentesis, PosPunto: Integer;
+  PosParentesis, PosPunto, InicioArchivo, FinParentesis: Integer;
   ParteFinal, NumeroStr: string;
 begin
   Result := False;
@@ -352,13 +358,13 @@ begin
          (Pos('.dpr', LowerCase(ParteFinal)) > 0) or
          (Pos('.inc', LowerCase(ParteFinal)) > 0) then
       begin
-        var InicioArchivo := PosPunto;
+        InicioArchivo := PosPunto;
         while (InicioArchivo > 1) and (ParteFinal[InicioArchivo - 1] <> ' ') do
           Dec(InicioArchivo);
 
         NombreArchivo := Copy(ParteFinal, InicioArchivo, Length(ParteFinal) - InicioArchivo + 1);
 
-        var FinParentesis := Pos(')', Linea, PosParentesis);
+        FinParentesis := Pos(')', Linea, PosParentesis);
         if FinParentesis > PosParentesis then
         begin
           NumeroStr := Copy(Linea, PosParentesis + 1, FinParentesis - PosParentesis - 1);
@@ -521,10 +527,11 @@ end;
 function TfrmPublish.ReadCompleteDelphiPaths(const DelphiVersion: string): TDelphiPaths;
 var
   Registry: TRegistry;
-  RegistryKey: string;
+  RegistryKey, VarName: string;
   SearchPath, BrowsingPath, DebugPath: string;
   PackageDCPOutput, PackageBPLOutput: string;
   Temp, PlatformPath: string;
+  EnvVars:TStrings;
 begin
   // Inicializar resultado
   Result.UnitPaths := '';
@@ -601,11 +608,11 @@ begin
     RegistryKey := Format('SOFTWARE\Embarcadero\BDS\%s\Environment Variables', [DelphiVersion]);
     if Registry.OpenKeyReadOnly(RegistryKey) then
     begin
-      var EnvVars := TStringList.Create;
+      EnvVars := TStringList.Create;
       try
         Registry.GetValueNames(EnvVars);
         LogMessage('Variables de entorno encontradas: ' + IntToStr(EnvVars.Count));
-        for var VarName in EnvVars do
+        for VarName in EnvVars do
         begin
           Temp := Registry.ReadString(VarName);
           LogMessage(VarName + '=' + Temp);
@@ -739,72 +746,69 @@ begin
     Result := FormatFloat('#,##0.0', Size / (1024 * 1024 * 1024)) + ' GB';
 end;
 
-procedure TfrmPublish.ShowArchiveStatistics(Arch: I7zInArchive);
-var
-  I: Integer;
-  TotalFiles, TotalFolders: Integer;
-  TotalOriginalSize, TotalCompressedSize: Int64;
-  PropValue: OleVariant;
-  FileSize, CompressedSize: Int64;
-  CompressionRatio: Double;
-begin
-  TotalFiles := 0;
-  TotalFolders := 0;
-  TotalOriginalSize := 0;
-  TotalCompressedSize := 0;
-
-  // Contar archivos y calcular tamaños totales
-  for I := 0 to Arch.NumberOfItems - 1 do
-  begin
-    if Arch.ItemIsFolder[I] then
-      Inc(TotalFolders)
-    else
-    begin
-      Inc(TotalFiles);
-      FileSize := Arch.ItemSize[I];
-      TotalOriginalSize := TotalOriginalSize + FileSize;
-
-      try
-        Arch.InArchive.GetProperty(I, kpidPackedSize, PropValue);
-        if not (VarIsNull(PropValue) or VarIsEmpty(PropValue)) then
-        begin
-          CompressedSize := PropValue;
-          TotalCompressedSize := TotalCompressedSize + CompressedSize;
-        end;
-      except
-        // Ignorar errores
-      end;
-    end;
-  end;
-
-  // Mostrar estadísticas
-  LogMessage('');
-  LogMessage('ESTADÍSTICAS DEL ARCHIVO:');
-  LogMessage(StringOfChar('=', 40));
-  LogMessage('Archivos: ' + IntToStr(TotalFiles));
-  LogMessage('Carpetas: ' + IntToStr(TotalFolders));
-  LogMessage('Tamaño original total: ' + FormatFileSize(TotalOriginalSize));
-  LogMessage('Tamaño comprimido total: ' + FormatFileSize(TotalCompressedSize));
-
-  if TotalOriginalSize > 0 then
-  begin
-    CompressionRatio := ((TotalOriginalSize - TotalCompressedSize) / TotalOriginalSize) * 100;
-    LogMessage('Ratio de compresión: ' + FormatFloat('0.0', CompressionRatio) + '%');
-    LogMessage('Factor de compresión: ' + FormatFloat('0.0', TotalOriginalSize / TotalCompressedSize) + ':1');
-  end;
-end;
+//procedure TfrmPublish.ShowArchiveStatistics(Arch: I7zInArchive);
+//var
+//  I: Integer;
+//  TotalFiles, TotalFolders: Integer;
+//  TotalOriginalSize, TotalCompressedSize: Int64;
+//  PropValue: OleVariant;
+//  FileSize, CompressedSize: Int64;
+//  CompressionRatio: Double;
+//begin
+//  TotalFiles := 0;
+//  TotalFolders := 0;
+//  TotalOriginalSize := 0;
+//  TotalCompressedSize := 0;
+//
+//  // Contar archivos y calcular tamaños totales
+//  for I := 0 to Arch.NumberOfItems - 1 do
+//  begin
+//    if Arch.ItemIsFolder[I] then
+//      Inc(TotalFolders)
+//    else
+//    begin
+//      Inc(TotalFiles);
+//      FileSize := Arch.ItemSize[I];
+//      TotalOriginalSize := TotalOriginalSize + FileSize;
+//
+//      try
+//        Arch.InArchive.GetProperty(I, kpidPackedSize, PropValue);
+//        if not (VarIsNull(PropValue) or VarIsEmpty(PropValue)) then
+//        begin
+//          CompressedSize := PropValue;
+//          TotalCompressedSize := TotalCompressedSize + CompressedSize;
+//        end;
+//      except
+//        // Ignorar errores
+//      end;
+//    end;
+//  end;
+//
+//  // Mostrar estadísticas
+//  LogMessage('');
+//  LogMessage('ESTADÍSTICAS DEL ARCHIVO:');
+//  LogMessage(StringOfChar('=', 40));
+//  LogMessage('Archivos: ' + IntToStr(TotalFiles));
+//  LogMessage('Carpetas: ' + IntToStr(TotalFolders));
+//  LogMessage('Tamaño original total: ' + FormatFileSize(TotalOriginalSize));
+//  LogMessage('Tamaño comprimido total: ' + FormatFileSize(TotalCompressedSize));
+//
+//  if TotalOriginalSize > 0 then
+//  begin
+//    CompressionRatio := ((TotalOriginalSize - TotalCompressedSize) / TotalOriginalSize) * 100;
+//    LogMessage('Ratio de compresión: ' + FormatFloat('0.0', CompressionRatio) + '%');
+//    LogMessage('Factor de compresión: ' + FormatFloat('0.0', TotalOriginalSize / TotalCompressedSize) + ':1');
+//  end;
+//end;
 
 procedure TfrmPublish.btnCheckClick(Sender: TObject);
 var
   Arch: I7zInArchive;
-  I, J: Integer;
+  I: Integer;
   ItemPath: string;
-  ItemSize, PackedSize: Int64;
   IsFolder: Boolean;
-  SizeStr, PackedStr, TypeStr, DateStr: string;
+  SizeStr: string;
   Indent: string;
-  FolderLevel: Integer;
-  PropValue: OleVariant;
   TotalFiles, TotalFolders: Integer;
   TotalOriginalSize, TotalCompressedSize: Int64;
   FileItems: array of TFileItem;
@@ -1189,7 +1193,7 @@ end;
 
 procedure TfrmPublish.btnComprimirEClick(Sender: TObject);
 var
-  ExeFolder, ProjectName, ExeFileName, CompressedFileName: string;
+  ProjectName, CompressedFileName: string;
   ExeSourcePath, ExeDestPath: string;
   Arch: I7zOutArchive;
   i: Integer;
@@ -1211,7 +1215,8 @@ begin
     Version := edtVersion.Text;
     // Construir ruta del ejecutable compilado
     if ContainsText(edtOutputExe.Text, '.\') then
-      ExeSourcePath := ExtractFilePath(edtProjectPath.Text) + edtOutputExe.Text + '\' + ProjectName + '.exe'
+      ExeSourcePath := ExtractFilePath(edtProjectPath.Text) +
+                                  edtOutputExe.Text + '\' + ProjectName + '.exe'
     else
       ExeSourcePath := edtOutputExe.Text + '\' + ProjectName + '.exe';
     // Verificar que existe el ejecutable
@@ -1240,7 +1245,7 @@ begin
       if FileExists(SourceFile) then
       begin
         DestFile := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
-                                                 ExtractFileName(SourceFile);
+                                                    ExtractFileName(SourceFile);
         if not SameText(SourceFile, DestFile) then
           if CopyFile(PChar(SourceFile), PChar(DestFile), False) then
             LogMessage('✓ Copiado: ' + ExtractFileName(SourceFile))
@@ -1259,7 +1264,7 @@ begin
       for i := 0 to lstFilesExe.Items.Count - 1 do
       begin
         DestFile := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
-                   ExtractFileName(lstFilesExe.Items[i]);
+                                          ExtractFileName(lstFilesExe.Items[i]);
         if FileExists(DestFile) then
           FilesToCompress.Add(DestFile);
       end;
@@ -1281,7 +1286,7 @@ begin
 //      end;
       // Agregar archivos al comprimido
       var BaseDir := IncludeTrailingPathDelimiter(edtExeDestPath.Text);
-      var BaseDirLen := Length(BaseDir);
+//      var BaseDirLen := Length(BaseDir);
       for var FileName in FilesToCompress do
       begin
         // Crear ruta relativa (solo nombre del archivo)
@@ -1294,7 +1299,8 @@ begin
       LogMessage('✓ Archivo comprimido creado: ' +
                                            ExtractFileName(CompressedFileName));
       // PASO 5: Enviar a VirusTotal si está habilitado
-      if chkSendToVirusTotal.Checked and (Trim(edtVirusTotalAPIKey.Text) <> '') then
+      if ((chkSendToVirusTotal.Checked) and
+          (Trim(edtVirusTotalAPIKey.Text) <> '')) then
       begin
         LogMessage('Enviando a VirusTotal...');
         if SendToVirusTotal(ExeDestPath) then
@@ -1564,32 +1570,32 @@ begin
   Result := TPath.Combine(CarpetaProyecto, NombreArchivo);
 end;
 
-function TfrmPublish.ExtraerRutaDesdeLineaDPR(const Linea, CarpetaBase: string): string;
-var
-  PosIn, PosComilla1, PosComilla2: Integer;
-  RutaRelativa: string;
-begin
-  Result := '';
-  // Buscar patrón: NombreUnit in 'ruta/archivo.pas'
-  PosIn := Pos(' in ', LowerCase(Linea));
-  if PosIn > 0 then
-  begin
-    PosComilla1 := Pos('''', Linea, PosIn);
-    if PosComilla1 > 0 then
-    begin
-      PosComilla2 := Pos('''', Linea, PosComilla1 + 1);
-      if PosComilla2 > PosComilla1 then
-      begin
-        RutaRelativa := Copy(Linea, PosComilla1 + 1, PosComilla2 - PosComilla1 - 1);
-        // Convertir ruta relativa a absoluta
-        if ExtractFilePath(RutaRelativa) = '' then
-          Result := IncludeTrailingPathDelimiter(CarpetaBase) + RutaRelativa
-        else
-          Result := ExpandFileName(IncludeTrailingPathDelimiter(CarpetaBase) + RutaRelativa);
-      end;
-    end;
-  end;
-end;
+//function TfrmPublish.ExtraerRutaDesdeLineaDPR(const Linea, CarpetaBase: string): string;
+//var
+//  PosIn, PosComilla1, PosComilla2: Integer;
+//  RutaRelativa: string;
+//begin
+//  Result := '';
+//  // Buscar patrón: NombreUnit in 'ruta/archivo.pas'
+//  PosIn := Pos(' in ', LowerCase(Linea));
+//  if PosIn > 0 then
+//  begin
+//    PosComilla1 := Pos('''', Linea, PosIn);
+//    if PosComilla1 > 0 then
+//    begin
+//      PosComilla2 := Pos('''', Linea, PosComilla1 + 1);
+//      if PosComilla2 > PosComilla1 then
+//      begin
+//        RutaRelativa := Copy(Linea, PosComilla1 + 1, PosComilla2 - PosComilla1 - 1);
+//        // Convertir ruta relativa a absoluta
+//        if ExtractFilePath(RutaRelativa) = '' then
+//          Result := IncludeTrailingPathDelimiter(CarpetaBase) + RutaRelativa
+//        else
+//          Result := ExpandFileName(IncludeTrailingPathDelimiter(CarpetaBase) + RutaRelativa);
+//      end;
+//    end;
+//  end;
+//end;
 
 procedure TfrmPublish.AbrirEnNotepad(const RutaArchivo: string; Linea: Integer);
 var
@@ -1776,7 +1782,7 @@ begin
   GetCursorPos(PuntoMouse);
   PuntoMouse := M1.ScreenToClient(PuntoMouse);
   // Intentar varios métodos hasta que uno funcione
-  IndiceLinea := -1;
+  // IndiceLinea := -1;
   // Método 1: Posición del cursor
   try
     IndiceLinea := M1.Perform(EM_LINEFROMCHAR, M1.SelStart, 0);
@@ -1921,7 +1927,12 @@ end;
 
 procedure TfrmPublish.LogMessage(const Msg: string);
 begin
-  m1.Lines.Add(Msg);
+  TThread.Queue(nil,
+    procedure
+    begin
+      m1.Lines.Add(Msg);
+    end
+  );
   Log.LogInfo(Msg);
 end;
 
@@ -2137,7 +2148,7 @@ begin
                               'lib\%s\%s"', [edtPlatForm.Text, edtConfig.Text]);
   BasePaths := BasePaths + ';"' + IncludeTrailingBackslash(edtBasePath.Text) +
                                                                      'Imports"';
-  BasePaths := BasePaths + ';"'+IncludeTrailingBackslash(edtCommonPath.Text) +
+  BasePaths := BasePaths + ';"' + IncludeTrailingBackslash(edtCommonPath.Text) +
                                                                          'Dcp"';
   BasePaths := BasePaths + ';"' + IncludeTrailingBackslash(edtBasePath.Text) +
                                                                      'include"';
@@ -2386,46 +2397,46 @@ begin
 end;
 
 // Función para forzar el análisis de comportamiento
-function TfrmPublish.ForceFileAnalysis(const FileHash: string): Boolean;
-var
-  HTTPClient: THTTPClient;
-  Response: IHTTPResponse;
-  RequestBody: TStringStream;
-begin
-  Result := False;
-  HTTPClient := THTTPClient.Create;
-  try
-    HTTPClient.CustomHeaders['x-apikey'] := Trim(edtVirusTotalAPIKey.Text);
-    HTTPClient.ContentType := 'application/x-www-form-urlencoded';
-    RequestBody := TStringStream.Create('');
-    try
-      LogMessage('🚀 Forzando análisis de comportamiento en sandbox...');
-
-      // Forzar análisis del archivo
-      Response := HTTPClient.Post('https://www.virustotal.com/api/v3/files/' + FileHash + '/analyse',
-                                 RequestBody);
-      if Response.StatusCode = 200 then
-      begin
-        LogMessage('✅ Análisis de comportamiento iniciado');
-        Result := True;
-      end
-      else if Response.StatusCode = 429 then
-      begin
-        LogMessage('⚠️ Rate limit alcanzado - el análisis puede tardar más');
-        Result := True; // Aún así consideramos que es exitoso
-      end
-      else
-      begin
-        LogMessage('❌ Error al forzar análisis: ' + IntToStr(Response.StatusCode));
-        LogMessage('Respuesta: ' + Response.ContentAsString);
-      end;
-    finally
-      RequestBody.Free;
-    end;
-  finally
-    HTTPClient.Free;
-  end;
-end;
+//function TfrmPublish.ForceFileAnalysis(const FileHash: string): Boolean;
+//var
+//  HTTPClient: THTTPClient;
+//  Response: IHTTPResponse;
+//  RequestBody: TStringStream;
+//begin
+//  Result := False;
+//  HTTPClient := THTTPClient.Create;
+//  try
+//    HTTPClient.CustomHeaders['x-apikey'] := Trim(edtVirusTotalAPIKey.Text);
+//    HTTPClient.ContentType := 'application/x-www-form-urlencoded';
+//    RequestBody := TStringStream.Create('');
+//    try
+//      LogMessage('🚀 Forzando análisis de comportamiento en sandbox...');
+//
+//      // Forzar análisis del archivo
+//      Response := HTTPClient.Post('https://www.virustotal.com/api/v3/files/' + FileHash + '/analyse',
+//                                 RequestBody);
+//      if Response.StatusCode = 200 then
+//      begin
+//        LogMessage('✅ Análisis de comportamiento iniciado');
+//        Result := True;
+//      end
+//      else if Response.StatusCode = 429 then
+//      begin
+//        LogMessage('⚠️ Rate limit alcanzado - el análisis puede tardar más');
+//        Result := True; // Aún así consideramos que es exitoso
+//      end
+//      else
+//      begin
+//        LogMessage('❌ Error al forzar análisis: ' + IntToStr(Response.StatusCode));
+//        LogMessage('Respuesta: ' + Response.ContentAsString);
+//      end;
+//    finally
+//      RequestBody.Free;
+//    end;
+//  finally
+//    HTTPClient.Free;
+//  end;
+//end;
 
 function TfrmPublish.SendToVirusTotal(FilePath: string): Boolean;
 var
@@ -2606,28 +2617,33 @@ function TfrmPublish.ExecuteCommand3(const CommandLine, DirIni: string): Boolean
 var
   ExitCode: Cardinal;
   CurrentDir: string;
+  bResult:Boolean;
 begin
-  Result := False;
+  bResult := False;
   try
-    if DirIni <> '' then
-    begin
-      CurrentDir := GetCurrentDir;
-      SetCurrentDir(DirIni);
+    try
+      if DirIni <> '' then
+      begin
+        CurrentDir := GetCurrentDir;
+        SetCurrentDir(DirIni);
+      end;
+      LogMessage('Ejecutando: ' + CommandLine);
+      // Usar Execute con callback para procesamiento línea por línea
+      ExitCode := Execute(CommandLine, ProcessOutputLine);
+      LogMessage('Código de salida: ' + IntToStr(ExitCode));
+      bResult := (ExitCode = 0);
+    except
+      on E: Exception do
+      begin
+        LogMessage('Error: ' + E.Message);
+        bResult := False;
+      end;
     end;
-    LogMessage('Ejecutando: ' + CommandLine);
-    // Usar Execute con callback para procesamiento línea por línea
-    ExitCode := Execute(CommandLine, ProcessOutputLine);
-    LogMessage('Código de salida: ' + IntToStr(ExitCode));
-    Result := (ExitCode = 0);
-  except
-    on E: Exception do
-    begin
-      LogMessage('Error: ' + E.Message);
-      Result := False;
-    end;
-  end;
-  if (DirIni <> '') and (CurrentDir <> '') then
+  finally
+    if (DirIni <> '') and (CurrentDir <> '') then
     SetCurrentDir(CurrentDir);
+    Result := bResult;
+  end;
 end;
 // Método para procesar cada línea
 procedure TfrmPublish.ProcessOutputLine(const Text: string);
