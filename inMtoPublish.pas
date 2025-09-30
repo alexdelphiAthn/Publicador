@@ -464,9 +464,10 @@ begin
   // Ordenar alfabéticamente
   cmbPerfiles.Sorted := True;
   // Restaurar selección si existe
-  if (CurrentSelection <> '') and (cmbPerfiles.Items.IndexOf(CurrentSelection) >= 0) then
+  if ((CurrentSelection <> '') and
+      (cmbPerfiles.Items.IndexOf(CurrentSelection) >= 0)) then
     cmbPerfiles.ItemIndex := cmbPerfiles.Items.IndexOf(CurrentSelection)
-  else if cmbPerfiles.Items.Count > 0 then
+  else if (cmbPerfiles.Items.Count > 0) then
     cmbPerfiles.ItemIndex := 0;
   // Actualizar estado de botones
 //  UpdateButtonStates;
@@ -478,7 +479,7 @@ var
   AppName, CurrentFile, NewFile: string;
 begin
   NombrePerfil := InputBox('Nuevo Perfil', 'Ingrese el nombre del nuevo perfil:', '');
-  if Trim(NombrePerfil) = '' then
+  if (Trim(NombrePerfil) = '') then
     Exit;
   // Validar caracteres
   if (Pos('\', NombrePerfil) > 0) or (Pos('/', NombrePerfil) > 0) or
