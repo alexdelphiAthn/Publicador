@@ -2319,19 +2319,6 @@ begin
     Exit;
   end;
 
-  // COPIAR todos los valores necesarios a las variables privadas
-  sVersion := edtVersion.Text;
-  sGlobFile := edtLibVarGlobPath.Text;
-  sProjFile := edtProjectPath.Text;
-  sDelphiBasePath := edtBasePath.Text;
-  sDelphiCommonPath := edtCommonPath.Text;
-  sCompilerName := edtCompilerName.Text;
-  sDelphiVersion := edtVersionDelphi.Text;
-  sPlatform := edtPlatForm.Text;
-  sBuildConfiguration := edtConfig.Text;
-  sOutputDirectory := edtOutputExe.Text;
-  sAdditionalParams := edtParamAdd.Text;
-
   btnCompile.Enabled := False;
 
   FCompileTask := CreateTask(
