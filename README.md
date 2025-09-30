@@ -46,6 +46,7 @@ Publisher Tool es una aplicación de escritorio desarrollada en Delphi que simpl
 - **JEDI Code Library (JCL)**: Utilidades del sistema y ejecución de procesos
 - **JVCL/JCL (JEDI Visual Component Library)**: Componentes visuales y no visuales
 - **SevenZip Library**: Compresión/descompresión 7z
+- **OmniThread Library**: Para la compilación, no bloquea la pantalla
 
 ### Componentes Delphi Estándar
 - System.Net.HttpClient (integración VirusTotal)
