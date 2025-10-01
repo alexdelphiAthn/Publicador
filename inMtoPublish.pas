@@ -447,8 +447,18 @@ end;
 procedure TfrmPublish.ChangeRemoteDirectory(const NewPath: string);
 begin
   try
+    LogMessage('=== CAMBIO DE DIRECTORIO ===');
+    LogMessage('Ruta solicitada: "' + NewPath + '"');
+    LogMessage('Ruta actual antes: "' + FCurrentRemotePath + '"');
+
     sFtpClient.ChangeCurrentDir(NewPath);
-    FCurrentRemotePath := NewPath;
+
+    // IMPORTANTE: Actualizar con lo que reporta el servidor
+    FCurrentRemotePath := sFtpClient.CurrentDir;
+
+    LogMessage('Ruta actual después (según servidor): "' + FCurrentRemotePath + '"');
+    LogMessage('============================');
+
     ListRemoteFiles(FCurrentRemotePath);
   except
     on E: Exception do
@@ -499,6 +509,7 @@ end;
 procedure TfrmPublish.btnSftpParentDirClick(Sender: TObject);
 var
   ParentPath: string;
+  PosSlash: Integer;
 begin
   if not sFtpClient.Active then
   begin
@@ -506,19 +517,49 @@ begin
     Exit;
   end;
 
-  // Calcular directorio padre
-  ParentPath := FCurrentRemotePath;
-  if (ParentPath <> '/') and (ParentPath <> '') then
+  if FCurrentRemotePath = '/' then
   begin
-    if ParentPath[Length(ParentPath)] = '/' then
-      Delete(ParentPath, Length(ParentPath), 1);
-
-    ParentPath := ExtractFilePath(ParentPath);
-    if ParentPath = '' then
-      ParentPath := '/';
-
-    ChangeRemoteDirectory(ParentPath);
+    LogMessage('Ya está en el directorio raíz');
+    Exit;
   end;
+
+  ParentPath := FCurrentRemotePath;
+
+  // Debug: mostrar ruta actual
+  LogMessage('Ruta actual antes de procesar: "' + ParentPath + '"');
+
+  // Quitar slash final si existe (excepto si es la raíz)
+  while (Length(ParentPath) > 1) and (ParentPath[Length(ParentPath)] = '/') do
+    Delete(ParentPath, Length(ParentPath), 1);
+
+  LogMessage('Ruta después de quitar slash final: "' + ParentPath + '"');
+
+  // Buscar la última barra desde el final
+  PosSlash := 0;
+  for var i := Length(ParentPath) downto 1 do
+  begin
+    if ParentPath[i] = '/' then
+    begin
+      PosSlash := i;
+      Break;
+    end;
+  end;
+
+  LogMessage('Posición de última barra: ' + IntToStr(PosSlash));
+
+  if PosSlash <= 1 then
+  begin
+    // Si la barra está en posición 1 o no existe, el padre es raíz
+    ParentPath := '/';
+  end
+  else
+  begin
+    // Cortar hasta la barra (sin incluirla)
+    ParentPath := Copy(ParentPath, 1, PosSlash - 1);
+  end;
+
+  LogMessage('Directorio padre calculado: "' + ParentPath + '"');
+  ChangeRemoteDirectory(ParentPath);
 end;
 
 function TfrmPublish.ExtraerURL(const Texto: string): string;
