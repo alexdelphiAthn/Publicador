@@ -59,7 +59,7 @@ object frmPublish: TfrmPublish
     Top = 0
     Width = 1071
     Height = 356
-    ActivePage = tsCompilacion
+    ActivePage = tsSftpBrowser
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -767,6 +767,120 @@ object frmPublish: TfrmPublish
         Caption = 'Usar y Cargar Perfil'
         TabOrder = 3
         OnClick = btnUsarPerfilClick
+      end
+    end
+    object tsSftpBrowser: TTabSheet
+      Caption = 'Navegador SFTP'
+      object pnlSftpTop: TPanel
+        Left = 0
+        Top = 0
+        Width = 1063
+        Height = 60
+        Align = alTop
+        TabOrder = 0
+        object lblCurrentPath: TLabel
+          Left = 10
+          Top = 35
+          Width = 187
+          Height = 21
+          Caption = 'Ruta actual: (no conectado)'
+        end
+        object btnSftpConnect: TButton
+          Left = 10
+          Top = 5
+          Width = 100
+          Height = 25
+          Caption = 'Conectar'
+          TabOrder = 0
+          OnClick = btnSftpConnectClick
+        end
+        object btnSftpDisconnect: TButton
+          Left = 115
+          Top = 5
+          Width = 100
+          Height = 25
+          Caption = 'Desconectar'
+          TabOrder = 1
+          OnClick = btnSftpDisconnectClick
+        end
+        object btnSftpRefresh: TButton
+          Left = 220
+          Top = 5
+          Width = 100
+          Height = 25
+          Caption = 'Refrescar'
+          TabOrder = 2
+          OnClick = btnSftpRefreshClick
+        end
+        object btnSftpParentDir: TButton
+          Left = 325
+          Top = 5
+          Width = 116
+          Height = 25
+          Caption = 'Carpeta padre'
+          TabOrder = 3
+          OnClick = btnSftpParentDirClick
+        end
+      end
+      object pnlSftpCenter: TPanel
+        Left = 0
+        Top = 60
+        Width = 1063
+        Height = 210
+        Align = alClient
+        TabOrder = 1
+        object lstRemoteFiles: TListBox
+          Left = 1
+          Top = 1
+          Width = 1061
+          Height = 208
+          Align = alClient
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -15
+          Font.Name = 'Consolas'
+          Font.Style = []
+          ItemHeight = 18
+          ParentFont = False
+          TabOrder = 0
+          TabWidth = 8
+          OnDblClick = lstRemoteFilesDblClick
+        end
+      end
+      object pnlSftpBottom: TPanel
+        Left = 0
+        Top = 270
+        Width = 1063
+        Height = 50
+        Align = alBottom
+        TabOrder = 2
+        object btnSftpDownload: TButton
+          Left = 10
+          Top = 10
+          Width = 120
+          Height = 30
+          Caption = 'Descargar archivo'
+          TabOrder = 0
+          OnClick = btnSftpDownloadClick
+        end
+        object btnSftpUpload: TButton
+          Left = 140
+          Top = 10
+          Width = 120
+          Height = 30
+          Caption = 'Subir archivo'
+          TabOrder = 1
+          OnClick = btnSftpUploadClick
+        end
+        object btnSftpDelete: TButton
+          Left = 270
+          Top = 10
+          Width = 120
+          Height = 30
+          Caption = 'Eliminar archivo'
+          TabOrder = 2
+          OnClick = btnSftpDeleteClick
+        end
       end
     end
   end

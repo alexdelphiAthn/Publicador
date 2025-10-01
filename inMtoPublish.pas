@@ -143,6 +143,19 @@ type
     mnuSeparador1: TMenuItem;
     mnuAbrirExplorador: TMenuItem;
     mnuVerEditor: TMenuItem;
+        tsSftpBrowser: TTabSheet;
+    pnlSftpTop: TPanel;
+    pnlSftpCenter: TPanel;
+    pnlSftpBottom: TPanel;
+    lblCurrentPath: TLabel;
+    lstRemoteFiles: TListBox;
+    btnSftpConnect: TButton;
+    btnSftpDisconnect: TButton;
+    btnSftpRefresh: TButton;
+    btnSftpParentDir: TButton;
+    btnSftpDownload: TButton;
+    btnSftpUpload: TButton;
+    btnSftpDelete: TButton;
     procedure btnBorrarPerfilClick(Sender: TObject);
     procedure btnNuevoPerfilClick(Sender: TObject);
     procedure btnCheckClick(Sender: TObject);
@@ -176,6 +189,14 @@ type
     procedure mnuAbrirExploradorClick(Sender: TObject);
     procedure mnuIrDireccionClick(Sender: TObject);
     procedure pm1Popup(Sender: TObject);
+    procedure btnSftpConnectClick(Sender: TObject);
+    procedure btnSftpDisconnectClick(Sender: TObject);
+    procedure btnSftpRefreshClick(Sender: TObject);
+    procedure btnSftpParentDirClick(Sender: TObject);
+    procedure btnSftpDownloadClick(Sender: TObject);
+    procedure btnSftpUploadClick(Sender: TObject);
+    procedure btnSftpDeleteClick(Sender: TObject);
+    procedure lstRemoteFilesDblClick(Sender: TObject);
   private
     FTextoLineaSeleccionada:string;
 //    FLineaSeleccionada:Integer;
@@ -237,11 +258,18 @@ type
     function EsURLValida(const URL: string): Boolean;
 //    procedure OnCompileTaskMessage(const task: IOmniTaskControl; const msg: TOmniMessage);
 //    procedure OnCompileTaskTerminated(const task: IOmniTaskControl);
+    procedure ListRemoteFiles(const RemotePath: string);
+    procedure DownloadSelectedFile;
+    procedure UploadFile;
+    procedure DeleteSelectedFile;
+    procedure ChangeRemoteDirectory(const NewPath: string);
     procedure LlamarCompilacion;
   private
     FCompileTask: IOmniTaskControl;
     FDelphiPaths: TDelphiPaths;
     F7zDLLHandle: THandle;
+    //NAVEGADOR SFTP
+    FCurrentRemotePath: string;
   end;
 
 var
@@ -254,6 +282,244 @@ uses
 
 {$R *.dfm}
 {$R recursos.res}
+
+procedure TfrmPublish.ListRemoteFiles(const RemotePath: string);
+var
+  FileList: TStringList;
+  i: Integer;
+begin
+  if not sFtpClient.Active then
+  begin
+    try
+      sFtpClient.Server := edtServer.Text;
+      sFtpClient.Port := StrToIntDef(edtPuerto.Text, 22);
+      sFtpClient.UserName := edtUsuario.Text;
+      sFtpClient.Password := edtPassFtp.Text;
+      sFtpClient.Open;
+      LogMessage('Conectado al servidor SFTP');
+    except
+      on E: Exception do
+      begin
+        LogMessage('Error conectando: ' + E.Message);
+        Exit;
+      end;
+    end;
+  end;
+
+  try
+    sFtpClient.ChangeCurrentDir(RemotePath);
+    FCurrentRemotePath := RemotePath;
+
+    FileList := TStringList.Create;
+    try
+      // Limpiar el listado actual
+      lstRemoteFiles.Clear;
+
+      // CORRECCIÓN: Usar GetList en lugar de List
+      // GetList(AList: TStrings; const AFilePath: string = ''; ADetails: Boolean = True);
+      sFtpClient.GetList(FileList, '', True);  // '' = directorio actual, True = con detalles
+
+      LogMessage('Contenido de: ' + FCurrentRemotePath);
+      LogMessage(StringOfChar('=', 60));
+
+      for i := 0 to FileList.Count - 1 do
+      begin
+        lstRemoteFiles.Items.Add(FileList[i]);
+        LogMessage(FileList[i]);
+      end;
+
+      lblCurrentPath.Caption := 'Ruta actual: ' + FCurrentRemotePath;
+      LogMessage('Total de elementos: ' + IntToStr(FileList.Count));
+
+    finally
+      FileList.Free;
+    end;
+  except
+    on E: Exception do
+      LogMessage('Error listando archivos: ' + E.Message);
+  end;
+end;
+
+procedure TfrmPublish.DownloadSelectedFile;
+var
+  RemoteFile, LocalFile: string;
+  SaveDialog: TSaveDialog;
+begin
+  if lstRemoteFiles.ItemIndex < 0 then
+  begin
+    LogMessage('Seleccione un archivo para descargar');
+    Exit;
+  end;
+
+  RemoteFile := lstRemoteFiles.Items[lstRemoteFiles.ItemIndex];
+
+  // Extraer solo el nombre del archivo (última parte después de espacios)
+  var Parts := RemoteFile.Split([' ']);
+  var ActualFileName := Parts[High(Parts)];
+
+  SaveDialog := TSaveDialog.Create(nil);
+  try
+    SaveDialog.FileName := ActualFileName;
+    SaveDialog.Filter := 'Todos los archivos (*.*)|*.*';
+
+    if SaveDialog.Execute then
+    begin
+      LocalFile := SaveDialog.FileName;
+
+      try
+        LogMessage('Descargando: ' + ActualFileName);
+        sFtpClient.GetFile(ActualFileName, LocalFile);
+        LogMessage('Archivo descargado exitosamente: ' + LocalFile);
+      except
+        on E: Exception do
+          LogMessage('Error descargando archivo: ' + E.Message);
+      end;
+    end;
+  finally
+    SaveDialog.Free;
+  end;
+end;
+
+procedure TfrmPublish.UploadFile;
+var
+  OpenDialog: TOpenDialog;
+  LocalFile, RemoteFileName: string;
+begin
+  OpenDialog := TOpenDialog.Create(nil);
+  try
+    OpenDialog.Filter := 'Todos los archivos (*.*)|*.*';
+
+    if OpenDialog.Execute then
+    begin
+      LocalFile := OpenDialog.FileName;
+      RemoteFileName := ExtractFileName(LocalFile);
+
+      try
+        LogMessage('Subiendo: ' + RemoteFileName);
+        sFtpClient.PutFile(LocalFile, RemoteFileName);
+        LogMessage('Archivo subido exitosamente');
+
+        // Refrescar la lista
+        ListRemoteFiles(FCurrentRemotePath);
+      except
+        on E: Exception do
+          LogMessage('Error subiendo archivo: ' + E.Message);
+      end;
+    end;
+  finally
+    OpenDialog.Free;
+  end;
+end;
+
+procedure TfrmPublish.DeleteSelectedFile;
+var
+  RemoteFile, FileName: string;
+begin
+  if lstRemoteFiles.ItemIndex < 0 then
+  begin
+    LogMessage('Seleccione un archivo para eliminar');
+    Exit;
+  end;
+
+  RemoteFile := lstRemoteFiles.Items[lstRemoteFiles.ItemIndex];
+
+  // Extraer solo el nombre del archivo
+  var Parts := RemoteFile.Split([' ']);
+  FileName := Parts[High(Parts)];
+
+  if MessageDlg('¿Está seguro de eliminar el archivo: ' + FileName + '?',
+                mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+  begin
+    try
+      LogMessage('Eliminando: ' + FileName);
+      sFtpClient.Delete(FileName);  // CORRECCIÓN: Delete en lugar de DeleteFile
+      LogMessage('Archivo eliminado exitosamente');
+
+      // Refrescar la lista
+      ListRemoteFiles(FCurrentRemotePath);
+    except
+      on E: Exception do
+        LogMessage('Error eliminando archivo: ' + E.Message);
+    end;
+  end;
+end;
+
+procedure TfrmPublish.ChangeRemoteDirectory(const NewPath: string);
+begin
+  try
+    sFtpClient.ChangeCurrentDir(NewPath);
+    FCurrentRemotePath := NewPath;
+    ListRemoteFiles(FCurrentRemotePath);
+  except
+    on E: Exception do
+      LogMessage('Error cambiando directorio: ' + E.Message);
+  end;
+end;
+
+// Eventos de los botones (agregar en el .dfm):
+procedure TfrmPublish.btnSftpConnectClick(Sender: TObject);
+begin
+  ListRemoteFiles(edtCarpetaRemota.Text);
+end;
+
+procedure TfrmPublish.btnSftpDownloadClick(Sender: TObject);
+begin
+  DownloadSelectedFile;
+end;
+
+procedure TfrmPublish.btnSftpUploadClick(Sender: TObject);
+begin
+  UploadFile;
+end;
+
+procedure TfrmPublish.btnSftpDeleteClick(Sender: TObject);
+begin
+  DeleteSelectedFile;
+end;
+
+procedure TfrmPublish.btnSftpDisconnectClick(Sender: TObject);
+begin
+  if sFtpClient.Active then
+  begin
+    sFtpClient.Close;
+    LogMessage('Desconectado del servidor SFTP');
+    lstRemoteFiles.Clear;
+    lblCurrentPath.Caption := 'Ruta actual: (no conectado)';
+  end;
+end;
+
+procedure TfrmPublish.btnSftpRefreshClick(Sender: TObject);
+begin
+  if sFtpClient.Active then
+    ListRemoteFiles(FCurrentRemotePath)
+  else
+    LogMessage('No está conectado al servidor');
+end;
+
+procedure TfrmPublish.btnSftpParentDirClick(Sender: TObject);
+var
+  ParentPath: string;
+begin
+  if not sFtpClient.Active then
+  begin
+    LogMessage('No está conectado al servidor');
+    Exit;
+  end;
+
+  // Calcular directorio padre
+  ParentPath := FCurrentRemotePath;
+  if (ParentPath <> '/') and (ParentPath <> '') then
+  begin
+    if ParentPath[Length(ParentPath)] = '/' then
+      Delete(ParentPath, Length(ParentPath), 1);
+
+    ParentPath := ExtractFilePath(ParentPath);
+    if ParentPath = '' then
+      ParentPath := '/';
+
+    ChangeRemoteDirectory(ParentPath);
+  end;
+end;
 
 function TfrmPublish.ExtraerURL(const Texto: string): string;
 var
@@ -1925,6 +2191,67 @@ begin
     end
   );
   Log.LogInfo(Msg);
+end;
+
+procedure TfrmPublish.lstRemoteFilesDblClick(Sender: TObject);
+var
+  SelectedLine, FileName: string;
+  IsDirectory: Boolean;
+  Parts: TArray<string>;
+  Permissions: string;
+begin
+  if lstRemoteFiles.ItemIndex < 0 then
+    Exit;
+
+  SelectedLine := Trim(lstRemoteFiles.Items[lstRemoteFiles.ItemIndex]);
+
+  // Extraer partes
+  Parts := SelectedLine.Split([' '], TStringSplitOptions.ExcludeEmpty);
+  if Length(Parts) < 9 then // Formato Unix estándar tiene al menos 9 campos
+    Exit;
+
+  // Primera columna son los permisos
+  Permissions := Parts[0];
+
+  // Si empieza con 'd' es directorio, con '-' es archivo regular
+  IsDirectory := (Length(Permissions) > 0) and (Permissions[1] = 'd');
+
+  // Nombre del archivo/carpeta (última parte)
+  FileName := Parts[High(Parts)];
+
+  if IsDirectory then
+  begin
+    // Ignorar '.' y manejar '..'
+    if FileName = '.' then
+      Exit;
+
+    if FileName = '..' then
+    begin
+      btnSftpParentDirClick(nil);
+      Exit;
+    end;
+
+    // Navegar al directorio
+    try
+      LogMessage('Navegando a: ' + FileName);
+
+      var NewPath := FCurrentRemotePath;
+      if not NewPath.EndsWith('/') then
+        NewPath := NewPath + '/';
+      NewPath := NewPath + FileName;
+
+      ChangeRemoteDirectory(NewPath);
+    except
+      on E: Exception do
+        LogMessage('Error: ' + E.Message);
+    end;
+  end
+  else
+  begin
+    // Es un archivo - abrir diálogo de descarga
+    LogMessage('Archivo seleccionado: ' + FileName);
+    DownloadSelectedFile;
+  end;
 end;
 
 procedure TfrmPublish.InitControls;
