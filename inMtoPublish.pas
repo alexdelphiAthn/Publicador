@@ -156,6 +156,8 @@ type
     btnSftpDownload: TButton;
     btnSftpUpload: TButton;
     btnSftpDelete: TButton;
+    chkComprimirCodF: TCheckBox;
+    chkEnviarCodF: TCheckBox;
     procedure btnBorrarPerfilClick(Sender: TObject);
     procedure btnNuevoPerfilClick(Sender: TObject);
     procedure btnCheckClick(Sender: TObject);
@@ -1461,42 +1463,38 @@ end;
 
 procedure TfrmPublish.btnComprimirClick(Sender: TObject);
 var
-   Arch: I7zOutArchive;
-   AFileName: string;
-   DirectorioBase, RutaRelativa:string;
-   LenBase:Integer;
+  Arch: I7zOutArchive;
+  AFileName: string;
+  DirectorioBase, RutaRelativa:string;
+  LenBase:Integer;
 begin
-//  if sd7z.Execute then
-//  begin
-    Arch := CreateOutArchive(CLSID_CFormat7z);
-    SetCompressionLevel(Arch, 9);
-    SevenZipSetCompressionMethod(Arch, m7LZMA);
-    Arch.SetPassword(edtPassword.Text);
-    M1.Lines.Clear;
-    if not Assigned(aFiles) then
-      aFiles := TStringList.Create
+  LogMessage('Comprimiendo código fuente');
+  Arch := CreateOutArchive(CLSID_CFormat7z);
+  SetCompressionLevel(Arch, 9);
+  SevenZipSetCompressionMethod(Arch, m7LZMA);
+  Arch.SetPassword(edtPassword.Text);
+  M1.Lines.Clear;
+  if not Assigned(aFiles) then
+    aFiles := TStringList.Create
+  else
+    aFiles.Clear;
+  DirectorioBase := IncludeTrailingPathDelimiter(edtOrigen.Text);
+  LenBase := Length(DirectorioBase);
+  RecorrerCarpetasConTDirectory(edtOrigen.Text);
+  for AFileName in aFiles do
+  begin
+   // Quitar el directorio base para obtener ruta relativa
+    if Pos(UpperCase(DirectorioBase), UpperCase(AFileName)) = 1 then
+      RutaRelativa := Copy(AFileName, LenBase + 1, MaxInt)
     else
-      aFiles.Clear;
-    DirectorioBase := IncludeTrailingPathDelimiter(edtOrigen.Text);
-    LenBase := Length(DirectorioBase);
-    RecorrerCarpetasConTDirectory(edtOrigen.Text);
-    for AFileName in aFiles do
-    begin
-     // Quitar el directorio base para obtener ruta relativa
-      if Pos(UpperCase(DirectorioBase), UpperCase(AFileName)) = 1 then
-        RutaRelativa := Copy(AFileName, LenBase + 1, MaxInt)
-      else
-        RutaRelativa := ExtractFileName(AFileName);
-      // Convertir \ a / (opcional pero recomendado)
-      RutaRelativa := StringReplace(RutaRelativa, '\', '/', [rfReplaceAll]);
-      Arch.AddFile(AFileName, RutaRelativa);
-      LogMessage(AFileName);
-      M1.Update;
-    end;
-    LogMessage(StringOfChar('=', 30));
-    LogMessage('Finalizado');
-    Arch.SaveToFile(edtDestino.Text);
-//  end;
+      RutaRelativa := ExtractFileName(AFileName);
+    RutaRelativa := StringReplace(RutaRelativa, '\', '/', [rfReplaceAll]);
+    Arch.AddFile(AFileName, RutaRelativa);
+    LogMessage(AFileName);
+  end;
+  LogMessage(StringOfChar('=', 30));
+  LogMessage('Finalizado');
+  Arch.SaveToFile(edtDestino.Text);
 end;
 
 procedure TfrmPublish.btnComprimirEClick(Sender: TObject);
@@ -1586,6 +1584,8 @@ begin
       Arch := CreateOutArchive(CLSID_CFormat7z);
       SetCompressionLevel(Arch, 9);
       SevenZipSetCompressionMethod(Arch, m7LZMA);
+      if chkComprimirCodF.Checked = True then
+        btnComprimirClick(Sender);
       // Usar la misma contraseña que en la pestaña de archivos fuente
 //      if edtPassword.Text <> '' then
 //      begin
@@ -1744,9 +1744,12 @@ begin
       if ((edtCarpetaRemota.Text <> '') or (edtCarpetaRemota.Text <> '/')) then
         SftpClient.ChangeCurrentDir(edtCarpetaRemota.Text);
       // Enviar el archivo
-      sNameFile := ExtractFileName(edtDestino.Text);
-      SftpClient.PutFile(edtDestino.Text, sNameFile);
-      LogMessage('Archivo '+sNameFile+' enviado correctamente');
+      if chkEnviarCodF.Checked = True then
+      begin
+        sNameFile := ExtractFileName(edtDestino.Text);
+        SftpClient.PutFile(edtDestino.Text, sNameFile);
+        LogMessage('Archivo '+sNameFile+' enviado correctamente');
+      end;
       ProjectName := TPath.GetFileNameWithoutExtension((edtProjectPath.Text));
       CompressedFileName := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
                 ProjectName + '_' + edtVersion.Text + '.7z';

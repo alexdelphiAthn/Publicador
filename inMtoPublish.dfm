@@ -59,7 +59,7 @@ object frmPublish: TfrmPublish
     Top = 0
     Width = 1071
     Height = 356
-    ActivePage = tsSftpBrowser
+    ActivePage = tsPublicarExe
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -708,6 +708,22 @@ object frmPublish: TfrmPublish
         Caption = 'Enviar Fichero Destino'
         TabOrder = 13
         OnClick = btnEnviarFTPExeClick
+      end
+      object chkComprimirCodF: TCheckBox
+        Left = 384
+        Top = 237
+        Width = 281
+        Height = 17
+        Caption = 'Comprimir tambi'#233'n c'#243'digo fuente'
+        TabOrder = 14
+      end
+      object chkEnviarCodF: TCheckBox
+        Left = 384
+        Top = 285
+        Width = 231
+        Height = 17
+        Caption = 'Enviar tambi'#233'n c'#243'digo fuente'
+        TabOrder = 15
       end
     end
     object tsPerfiles: TTabSheet
