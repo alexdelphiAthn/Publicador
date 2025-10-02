@@ -51,13 +51,15 @@ object frmPublish: TfrmPublish
     PopupMenu = pm1
     ScrollBars = ssVertical
     TabOrder = 0
+    ExplicitTop = 358
+    ExplicitWidth = 1067
   end
   object jpcPestanas: TJvgPageControl
     Left = 0
     Top = 0
     Width = 1071
     Height = 356
-    ActivePage = tsPublicarExe
+    ActivePage = tsCompilacion
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
