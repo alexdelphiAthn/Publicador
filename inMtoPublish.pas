@@ -1723,12 +1723,14 @@ begin
       if chkEnviarCodF.Checked = True then
       begin
         sNameFile := ExtractFileName(edtDestino.Text);
+        LogMessage('Enviando... ' + edtDestino.Text);
         SftpClient.PutFile(edtDestino.Text, sNameFile);
         LogMessage('Archivo '+sNameFile+' enviado correctamente');
       end;
       ProjectName := TPath.GetFileNameWithoutExtension((edtProjectPath.Text));
       CompressedFileName := IncludeTrailingPathDelimiter(edtExeDestPath.Text) +
                 ProjectName + '_' + edtVersion.Text + '.7z';
+      LogMessage('Enviando... ' + CompressedFileName);
       SftpClient.PutFile(CompressedFileName,
                                           ExtractFileName(CompressedFileName));
       LogMessage('Archivo '+CompressedFileName+' enviado correctamente');
