@@ -1854,29 +1854,24 @@ var
   CarpetaProyecto: string;
 begin
   CarpetaProyecto := edtProjectPath.Text;
-
   // Si ya es una ruta completa, usarla directamente
   if TPath.IsPathRooted(NombreArchivo) then
   begin
     Result := NombreArchivo;
     Exit;
   end;
-
   // Si es una ruta relativa, combinar con carpeta del proyecto
   if not TDirectory.Exists(CarpetaProyecto) then
   begin
     Result := NombreArchivo; // Fallback
     Exit;
   end;
-
   // Intentar en la misma carpeta del proyecto
   Result := TPath.Combine(CarpetaProyecto, ExtractFileName(NombreArchivo));
   if TFile.Exists(Result) then
     Exit;
-
   // Si no está ahí, buscar en el archivo DPR (método original si lo necesitas)
   // ... resto del código si es necesario
-
   // Si no se encuentra, devolver ruta combinada
   Result := TPath.Combine(CarpetaProyecto, NombreArchivo);
 end;
