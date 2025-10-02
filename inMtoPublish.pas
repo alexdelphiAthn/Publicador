@@ -307,32 +307,25 @@ begin
       end;
     end;
   end;
-
   try
     sFtpClient.ChangeCurrentDir(RemotePath);
     FCurrentRemotePath := RemotePath;
-
     FileList := TStringList.Create;
     try
       // Limpiar el listado actual
       lstRemoteFiles.Clear;
-
       // CORRECCIÓN: Usar GetList en lugar de List
       // GetList(AList: TStrings; const AFilePath: string = ''; ADetails: Boolean = True);
       sFtpClient.GetList(FileList, '', True);  // '' = directorio actual, True = con detalles
-
       LogMessage('Contenido de: ' + FCurrentRemotePath);
       LogMessage(StringOfChar('=', 60));
-
       for i := 0 to FileList.Count - 1 do
       begin
         lstRemoteFiles.Items.Add(FileList[i]);
         LogMessage(FileList[i]);
       end;
-
       lblCurrentPath.Caption := 'Ruta actual: ' + FCurrentRemotePath;
       LogMessage('Total de elementos: ' + IntToStr(FileList.Count));
-
     finally
       FileList.Free;
     end;
@@ -422,13 +415,10 @@ begin
     LogMessage('Seleccione un archivo para eliminar');
     Exit;
   end;
-
   RemoteFile := lstRemoteFiles.Items[lstRemoteFiles.ItemIndex];
-
   // Extraer solo el nombre del archivo
   var Parts := RemoteFile.Split([' ']);
   FileName := Parts[High(Parts)];
-
   if MessageDlg('¿Está seguro de eliminar el archivo: ' + FileName + '?',
                 mtConfirmation, [mbYes, mbNo], 0) = mrYes then
   begin
@@ -436,7 +426,6 @@ begin
       LogMessage('Eliminando: ' + FileName);
       sFtpClient.Delete(FileName);  // CORRECCIÓN: Delete en lugar de DeleteFile
       LogMessage('Archivo eliminado exitosamente');
-
       // Refrescar la lista
       ListRemoteFiles(FCurrentRemotePath);
     except
@@ -452,15 +441,11 @@ begin
     LogMessage('=== CAMBIO DE DIRECTORIO ===');
     LogMessage('Ruta solicitada: "' + NewPath + '"');
     LogMessage('Ruta actual antes: "' + FCurrentRemotePath + '"');
-
     sFtpClient.ChangeCurrentDir(NewPath);
-
     // IMPORTANTE: Actualizar con lo que reporta el servidor
     FCurrentRemotePath := sFtpClient.CurrentDir;
-
     LogMessage('Ruta actual después (según servidor): "' + FCurrentRemotePath + '"');
     LogMessage('============================');
-
     ListRemoteFiles(FCurrentRemotePath);
   except
     on E: Exception do
@@ -518,24 +503,18 @@ begin
     LogMessage('No está conectado al servidor');
     Exit;
   end;
-
   if FCurrentRemotePath = '/' then
   begin
     LogMessage('Ya está en el directorio raíz');
     Exit;
   end;
-
   ParentPath := FCurrentRemotePath;
-
   // Debug: mostrar ruta actual
   LogMessage('Ruta actual antes de procesar: "' + ParentPath + '"');
-
   // Quitar slash final si existe (excepto si es la raíz)
   while (Length(ParentPath) > 1) and (ParentPath[Length(ParentPath)] = '/') do
     Delete(ParentPath, Length(ParentPath), 1);
-
   LogMessage('Ruta después de quitar slash final: "' + ParentPath + '"');
-
   // Buscar la última barra desde el final
   PosSlash := 0;
   for var i := Length(ParentPath) downto 1 do
@@ -546,9 +525,7 @@ begin
       Break;
     end;
   end;
-
   LogMessage('Posición de última barra: ' + IntToStr(PosSlash));
-
   if PosSlash <= 1 then
   begin
     // Si la barra está en posición 1 o no existe, el padre es raíz
@@ -559,7 +536,6 @@ begin
     // Cortar hasta la barra (sin incluirla)
     ParentPath := Copy(ParentPath, 1, PosSlash - 1);
   end;
-
   LogMessage('Directorio padre calculado: "' + ParentPath + '"');
   ChangeRemoteDirectory(ParentPath);
 end;
@@ -2246,44 +2222,34 @@ var
 begin
   if lstRemoteFiles.ItemIndex < 0 then
     Exit;
-
   SelectedLine := Trim(lstRemoteFiles.Items[lstRemoteFiles.ItemIndex]);
-
   // Extraer partes
   Parts := SelectedLine.Split([' '], TStringSplitOptions.ExcludeEmpty);
   if Length(Parts) < 9 then // Formato Unix estándar tiene al menos 9 campos
     Exit;
-
   // Primera columna son los permisos
   Permissions := Parts[0];
-
   // Si empieza con 'd' es directorio, con '-' es archivo regular
   IsDirectory := (Length(Permissions) > 0) and (Permissions[1] = 'd');
-
   // Nombre del archivo/carpeta (última parte)
   FileName := Parts[High(Parts)];
-
   if IsDirectory then
   begin
     // Ignorar '.' y manejar '..'
     if FileName = '.' then
       Exit;
-
     if FileName = '..' then
     begin
       btnSftpParentDirClick(nil);
       Exit;
     end;
-
     // Navegar al directorio
     try
       LogMessage('Navegando a: ' + FileName);
-
       var NewPath := FCurrentRemotePath;
       if not NewPath.EndsWith('/') then
         NewPath := NewPath + '/';
       NewPath := NewPath + FileName;
-
       ChangeRemoteDirectory(NewPath);
     except
       on E: Exception do
@@ -2676,22 +2642,18 @@ begin
     LogMessage('Seleccione un archivo de proyecto válido (.dpr)');
     Exit;
   end;
-
   if not chkVersionarVariable.Checked then
     if not FileExists(edtLibVarGlobPath.Text) then
     begin
       LogMessage('Seleccione el archivo inLibVarGlob.pas');
       Exit;
     end;
-
   if Assigned(FCompileTask) then
   begin
     LogMessage('Ya hay una compilación en curso');
     Exit;
   end;
-
   btnCompile.Enabled := False;
-
   FCompileTask := CreateTask(
     procedure(const task: IOmniTask)
     begin
@@ -2721,11 +2683,8 @@ begin
     begin
       VersionarVariable := chkVersionarVariable.Checked;
     end);
-
     NewVersion := sVersion; // Usar variable copiada, NO el control
-
     LogMessage('=== INICIANDO COMPILACIÓN ===');
-
     // Paso 1: Actualizar versión en el archivo
     if not VersionarVariable then
     begin
@@ -2741,15 +2700,12 @@ begin
         LogMessage('Nueva versión: ' + NewVersion);
       end;
     end;
-
     // Paso 2: Compilar proyecto
     LogMessage('Iniciando compilación del proyecto...');
-
     if CompileProject then
     begin
       LogMessage('=== COMPILACIÓN EXITOSA ===');
       LogMessage('Proceso completado exitosamente!' + #13#10 + 'Versión: ' + NewVersion);
-
       TThread.Synchronize(nil, procedure
       begin
         LogMessage('Compilación completada: ' + NewVersion);
@@ -2760,7 +2716,6 @@ begin
       LogMessage('ERROR: Fallo en la compilación');
       LogMessage('Error en la compilación. Revise el log.');
     end;
-
   except
     on E: Exception do
     begin

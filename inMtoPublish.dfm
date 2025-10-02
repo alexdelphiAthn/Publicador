@@ -51,8 +51,6 @@ object frmPublish: TfrmPublish
     PopupMenu = pm1
     ScrollBars = ssVertical
     TabOrder = 0
-    ExplicitTop = 358
-    ExplicitWidth = 1067
   end
   object jpcPestanas: TJvgPageControl
     Left = 0
