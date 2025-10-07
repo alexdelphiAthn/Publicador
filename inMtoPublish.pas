@@ -1787,7 +1787,7 @@ procedure TfrmPublish.btnUsarPerfilClick(Sender: TObject);
 var
   ProfileName: string;
 begin
-  if cmbPerfiles.ItemIndex < 0 then
+  if (cmbPerfiles.ItemIndex < 0) then
     Exit;
   ProfileName := cmbPerfiles.Text;
   // Guardar configuración actual antes de cambiar
