@@ -59,7 +59,7 @@ object frmPublish: TfrmPublish
     Top = 0
     Width = 1071
     Height = 356
-    ActivePage = tsPublicarExe
+    ActivePage = tsPerfiles
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -960,5 +960,12 @@ object frmPublish: TfrmPublish
       Caption = 'Ver en &Editor'
       OnClick = mnuVerEditorClick
     end
+  end
+  object sFtpClientBrowse: TclSFtp
+    SshAgent = 'Clever_Internet_Suite'
+    CharSet = 'utf-8'
+    OnVerifyServer = sFtpClientVerifyServer
+    Left = 608
+    Top = 552
   end
 end

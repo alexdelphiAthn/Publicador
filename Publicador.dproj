@@ -5,7 +5,7 @@
         <FrameworkType>VCL</FrameworkType>
         <MainSource>Publicador.dpr</MainSource>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Config Condition="'$(Config)'==''">Release</Config>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>1</TargetedPlatforms>
         <AppType>Application</AppType>
@@ -137,7 +137,6 @@
                 </Excluded_Packages>
             </Delphi.Personality>
             <Deployment Version="4">
-                <DeployFile LocalName="Win32\Debug\Publicador.exe" Configuration="Debug" Class="ProjectOutput"/>
                 <DeployFile LocalName="Win32\Debug\Publicador.exe" Configuration="Debug" Class="ProjectOutput"/>
                 <DeployFile LocalName="Win32\Release\Publicador.exe" Configuration="Release" Class="ProjectOutput"/>
                 <DeployClass Name="AdditionalDebugSymbols">
