@@ -59,7 +59,7 @@ object frmPublish: TfrmPublish
     Top = 0
     Width = 1071
     Height = 356
-    ActivePage = tsPerfiles
+    ActivePage = tsPublicarExe
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -142,22 +142,13 @@ object frmPublish: TfrmPublish
         Caption = '...'
         TabOrder = 1
       end
-      object btnComprimir: TButton
-        Left = 80
-        Top = 208
-        Width = 449
-        Height = 25
-        Caption = 'Comprimir'
-        TabOrder = 2
-        OnClick = btnComprimirClick
-      end
       object btnCheck: TButton
         Left = 344
         Top = 89
         Width = 185
         Height = 25
         Caption = 'Probar Listar interior 7z'
-        TabOrder = 3
+        TabOrder = 2
         OnClick = btnCheckClick
       end
       object edtDestino: TEdit
@@ -165,7 +156,7 @@ object frmPublish: TfrmPublish
         Top = 87
         Width = 281
         Height = 29
-        TabOrder = 4
+        TabOrder = 3
       end
       object btnDestino: TButton
         Left = 295
@@ -173,7 +164,7 @@ object frmPublish: TfrmPublish
         Width = 26
         Height = 25
         Caption = '...'
-        TabOrder = 5
+        TabOrder = 4
         OnClick = btnDestinoClick
       end
       object edtPassword: TEdit
@@ -181,14 +172,14 @@ object frmPublish: TfrmPublish
         Top = 138
         Width = 281
         Height = 29
-        TabOrder = 6
+        TabOrder = 5
       end
       object edtExtension: TEdit
         Left = 608
         Top = 31
         Width = 97
         Height = 29
-        TabOrder = 7
+        TabOrder = 6
       end
       object lstExtensiones: TListBox
         Left = 608
@@ -205,7 +196,7 @@ object frmPublish: TfrmPublish
           '*.sql'
           '*.ini'
           '*.docx')
-        TabOrder = 8
+        TabOrder = 7
       end
       object btnAddExt: TButton
         Left = 711
@@ -213,7 +204,7 @@ object frmPublish: TfrmPublish
         Width = 90
         Height = 25
         Caption = 'A'#241'adir'
-        TabOrder = 9
+        TabOrder = 8
         OnClick = btnAddExtClick
       end
       object btnDeleteExt: TButton
@@ -222,7 +213,7 @@ object frmPublish: TfrmPublish
         Width = 90
         Height = 25
         Caption = 'Quitar'
-        TabOrder = 10
+        TabOrder = 9
         OnClick = btnDeleteExtClick
       end
     end
@@ -646,11 +637,11 @@ object frmPublish: TfrmPublish
         Height = 25
         Caption = 'Comprimir'
         TabOrder = 7
-        OnClick = btnComprimirEClick
+        OnClick = btnComprimirExeClick
       end
       object chkSendToVirusTotal: TCheckBox
         Left = 384
-        Top = 154
+        Top = 162
         Width = 497
         Height = 17
         Caption = 'Enviar a VirusTotal autom'#225'ticamente despu'#233's de la compresi'#243'n'
@@ -711,7 +702,7 @@ object frmPublish: TfrmPublish
       end
       object chkComprimirCodF: TCheckBox
         Left = 384
-        Top = 237
+        Top = 185
         Width = 281
         Height = 17
         Caption = 'Comprimir tambi'#233'n c'#243'digo fuente'
@@ -719,7 +710,7 @@ object frmPublish: TfrmPublish
       end
       object chkEnviarCodF: TCheckBox
         Left = 384
-        Top = 285
+        Top = 291
         Width = 231
         Height = 17
         Caption = 'Enviar tambi'#233'n c'#243'digo fuente'
@@ -783,6 +774,15 @@ object frmPublish: TfrmPublish
         Caption = 'Usar y Cargar Perfil'
         TabOrder = 3
         OnClick = btnUsarPerfilClick
+      end
+      object btnGrabar: TButton
+        Left = 632
+        Top = 102
+        Width = 225
+        Height = 25
+        Caption = 'Grabar ini actual'
+        TabOrder = 4
+        OnClick = btnGrabarClick
       end
     end
     object tsSftpBrowser: TTabSheet

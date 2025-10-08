@@ -60,7 +60,6 @@ type
     lblPassword: TLabel;
     edtOrigen: TEdit;
     btn3: TButton;
-    btnComprimir: TButton;
     btnCheck: TButton;
     edtDestino: TEdit;
     btnDestino: TButton;
@@ -159,10 +158,10 @@ type
     chkComprimirCodF: TCheckBox;
     chkEnviarCodF: TCheckBox;
     sFtpClientBrowse: TclSFtp;
+    btnGrabar: TButton;
     procedure btnBorrarPerfilClick(Sender: TObject);
     procedure btnNuevoPerfilClick(Sender: TObject);
     procedure btnCheckClick(Sender: TObject);
-    procedure btnComprimirClick(Sender: TObject);
     procedure btnOrigenClick(Sender: TObject);
     procedure btnDestinoClick(Sender: TObject);
     procedure btnEnviarFTPClick(Sender: TObject);
@@ -186,7 +185,7 @@ type
     procedure btnDeleteExeClick(Sender: TObject);
     procedure btnSelectFileAddClick(Sender: TObject);
     procedure btnSelectFolderCopyExeClick(Sender: TObject);
-    procedure btnComprimirEClick(Sender: TObject);
+//    procedure btnComprimirEClick(Sender: TObject);
     procedure btnEnviarFTPExeClick(Sender: TObject);
     procedure mnuVerEditorClick(Sender: TObject);
     procedure mnuAbrirExploradorClick(Sender: TObject);
@@ -200,6 +199,8 @@ type
     procedure btnSftpUploadClick(Sender: TObject);
     procedure btnSftpDeleteClick(Sender: TObject);
     procedure lstRemoteFilesDblClick(Sender: TObject);
+    procedure btnGrabarClick(Sender: TObject);
+    procedure btnComprimirExeClick(Sender: TObject);
   private
     FTextoLineaSeleccionada:string;
 //    FLineaSeleccionada:Integer;
@@ -267,10 +268,13 @@ type
     procedure DeleteSelectedFile;
     procedure ChangeRemoteDirectory(const NewPath: string);
     procedure LlamarCompilacion;
+    procedure Comprimir;
+    procedure ComprimirFuente;
   private
     FCompileTask: IOmniTaskControl;
     FDelphiPaths: TDelphiPaths;
     F7zDLLHandle: THandle;
+    FCompressExeTask: IOmniTAskControl;
     //NAVEGADOR SFTP
     FCurrentRemotePath: string;
   end;
@@ -1015,6 +1019,18 @@ end;
 
 procedure TfrmPublish.FormDestroy(Sender: TObject);
 begin
+    if Assigned(FCompressExeTask) then
+  begin
+    FCompressExeTask.Terminate;
+    FCompressExeTask := nil;
+  end;
+
+  if Assigned(FCompileTask) then
+  begin
+    FCompileTask.Terminate;
+    FCompileTask := nil;
+  end;
+
   if F7zDLLHandle <> 0 then
     FreeLibrary(F7zDLLHandle);
 end;
@@ -1253,7 +1269,6 @@ begin
   end
   else
   begin
-    M1.Lines.Clear;
     LogMessage('CONTENIDO DEL ARCHIVO: ' + ExtractFileName(edtDestino.Text) + ' (ORDENADO ALFABÉTICAMENTE)');
     LogMessage(StringOfChar('=', 110));
     LogMessage('');
@@ -1438,7 +1453,7 @@ begin
   LogMessage('Servidor: ' + AHost + ' - Fingerprint: ' + AFingerPrint);
 end;
 
-procedure TfrmPublish.btnComprimirClick(Sender: TObject);
+procedure TfrmPublish.ComprimirFuente;
 var
   Arch: I7zOutArchive;
   AFileName: string;
@@ -1450,7 +1465,6 @@ begin
   SetCompressionLevel(Arch, 9);
   SevenZipSetCompressionMethod(Arch, m7LZMA);
   Arch.SetPassword(edtPassword.Text);
-  M1.Lines.Clear;
   if not Assigned(aFiles) then
     aFiles := TStringList.Create
   else
@@ -1474,7 +1488,7 @@ begin
   Arch.SaveToFile(edtDestino.Text);
 end;
 
-procedure TfrmPublish.btnComprimirEClick(Sender: TObject);
+procedure TfrmPublish.Comprimir;
 var
   ProjectName, CompressedFileName: string;
   ExeSourcePath, ExeDestPath: string;
@@ -1562,7 +1576,7 @@ begin
       SetCompressionLevel(Arch, 9);
       SevenZipSetCompressionMethod(Arch, m7LZMA);
       if chkComprimirCodF.Checked = True then
-        btnComprimirClick(Sender);
+        ComprimirFuente;
       // Usar la misma contraseña que en la pestaña de archivos fuente
 //      if edtPassword.Text <> '' then
 //      begin
@@ -1681,7 +1695,6 @@ begin
     try
       // Conectar al servidor
       SftpClient.Open;
-      m1.Lines.Clear;
       LogMessage('Conectado al servidor SFTP');
       // Cambiar al directorio remoto donde quieres subir el archivo (opcional)
       if ((edtCarpetaRemota.Text <> '') or (edtCarpetaRemota.Text <> '/')) then
@@ -1753,6 +1766,12 @@ begin
     edtVersion.Text := Copy(edtVersion.Text , 1, 3);
     edtVersion.Text := edtVersion.Text + '.' + FormatDateTime('yyyymmddhhnn', Now);
   end;
+end;
+
+procedure TfrmPublish.btnGrabarClick(Sender: TObject);
+begin
+  grabarIni;
+  ShowMessage('Grabado el perfil actual');
 end;
 
 procedure TfrmPublish.btnSelectFileAddClick(Sender: TObject);
@@ -2663,6 +2682,55 @@ begin
       TThread.Queue(nil, procedure
       begin
         btnCompile.Enabled := True;
+      end);
+    end
+  ).Run;
+end;
+
+procedure TfrmPublish.btnComprimirExeClick(Sender: TObject);
+begin
+  if Assigned(FCompressExeTask) then
+  begin
+    LogMessage('Ya hay una compresión de ejecutable en curso');
+    Exit;
+  end;
+
+  // Validar campos
+  if not DirectoryExists(edtExeDestPath.Text) then
+  begin
+    LogMessage('ERROR: La carpeta destino no existe');
+    Exit;
+  end;
+
+  if not FileExists(edtProjectPath.Text) then
+  begin
+    LogMessage('ERROR: Especifique un proyecto válido');
+    Exit;
+  end;
+
+  // Deshabilitar botón
+  btnComprimirExe.Enabled := False;
+
+  // Crear y ejecutar tarea en thread
+  FCompressExeTask := CreateTask(
+    procedure(const task: IOmniTask)
+    begin
+      try
+        Comprimir;
+      except
+        on E: Exception do
+          LogMessage('ERROR: ' + E.Message);
+      end;
+    end,
+    'CompressExeTask'
+  ).OnTerminated(
+    procedure(const task: IOmniTaskControl)
+    begin
+      FCompressExeTask := nil;
+      TThread.Queue(nil, procedure
+      begin
+        btnComprimirExe.Enabled := True;
+        LogMessage('Compresión de ejecutable finalizada');
       end);
     end
   ).Run;
