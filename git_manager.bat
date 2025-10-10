@@ -38,9 +38,10 @@ goto menu
 :status
 echo.
 echo Estado de los proyectos:
-wsl bash -c "cd '/mnt/c/DISCO DURO/proyectos/publicador/Publicador' && echo '=== Publicador ===' && git status --short && echo 'Rama:' $(git branch --show-current) && echo '---'"
+wsl bash -c "cd '/mnt/c/DISCO DURO/proyectos/Publicador/Publicador' && echo '=== Publicador ===' && git status --short && echo 'Rama:' $(git branch --show-current) && echo '---'"
 wsl bash -c "cd '/mnt/c/DISCO DURO/proyectos/subocasoft/subocasoft' && echo '=== Subocasoft ===' && git status --short && echo 'Rama:' $(git branch --show-current) && echo '---'"
-wsl bash -c "cd '/mnt/c/DISCO DURO/proyectos/factuzam/Factuzam' && echo '=== Factuzam ===' && git status --short && echo 'Rama:' $(git branch --show-current) && echo '---'"
+wsl bash -c "cd '/mnt/c/DISCO DURO/proyectos/factuzam/factuzam' && echo '=== Factuzam ===' && git status --short && echo 'Rama:' $(git branch --show-current) && echo '---'"
+wsl bash -c "cd '/mnt/c/DISCO DURO/proyectos/OdaVeriFactu/OdaVeriFactu' && echo '=== OdaVeriFactu ===' && git status --short && echo 'Rama:' $(git branch --show-current) && echo '---'"
 echo.
 pause
 goto menu
