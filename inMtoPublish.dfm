@@ -51,8 +51,8 @@ object frmPublish: TfrmPublish
     PopupMenu = pm1
     ScrollBars = ssVertical
     TabOrder = 0
-    ExplicitTop = 358
-    ExplicitWidth = 1067
+    ExplicitTop = 350
+    ExplicitWidth = 1065
   end
   object jpcPestanas: TJvgPageControl
     Left = 0
@@ -95,8 +95,8 @@ object frmPublish: TfrmPublish
     TabSelectedStyle.Gradient.Active = False
     TabSelectedStyle.Gradient.Orientation = fgdHorizontal
     Options = [ftoAutoFontDirection, ftoExcludeGlyphs]
-    ExplicitWidth = 1067
-    ExplicitHeight = 355
+    ExplicitWidth = 1065
+    ExplicitHeight = 347
     object tsFicheros: TTabSheet
       Caption = 'Ficheros C'#243'digo Fuente'
       object lblOrigen: TLabel

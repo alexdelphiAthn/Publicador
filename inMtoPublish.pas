@@ -1024,7 +1024,6 @@ begin
     FCompressExeTask.Terminate;
     FCompressExeTask := nil;
   end;
-
   if Assigned(FCompileTask) then
   begin
     FCompileTask.Terminate;
@@ -2694,23 +2693,19 @@ begin
     LogMessage('Ya hay una compresión de ejecutable en curso');
     Exit;
   end;
-
   // Validar campos
   if not DirectoryExists(edtExeDestPath.Text) then
   begin
     LogMessage('ERROR: La carpeta destino no existe');
     Exit;
   end;
-
   if not FileExists(edtProjectPath.Text) then
   begin
     LogMessage('ERROR: Especifique un proyecto válido');
     Exit;
   end;
-
   // Deshabilitar botón
   btnComprimirExe.Enabled := False;
-
   // Crear y ejecutar tarea en thread
   FCompressExeTask := CreateTask(
     procedure(const task: IOmniTask)
