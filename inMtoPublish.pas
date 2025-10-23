@@ -461,6 +461,14 @@ end;
 // Eventos de los botones (agregar en el .dfm):
 procedure TfrmPublish.btnSftpConnectClick(Sender: TObject);
 begin
+  if sFtpClientBrowse.Active = false then
+  begin
+      sFtpClientBrowse.Server := edtServer.Text;
+      sFtpClientBrowse.Port := StrToIntDef(edtPuerto.Text, 22);
+      sFtpClientBrowse.UserName := edtUsuario.Text;
+      sFtpClientBrowse.Password := edtPassFtp.Text;
+      sFTpClientBrowse.Open;
+  end;
   ListRemoteFiles(edtCarpetaRemota.Text);
 end;
 

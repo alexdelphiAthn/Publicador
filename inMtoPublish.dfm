@@ -59,7 +59,7 @@ object frmPublish: TfrmPublish
     Top = 0
     Width = 1071
     Height = 356
-    ActivePage = tsPublicarExe
+    ActivePage = tsSftpBrowser
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -873,14 +873,14 @@ object frmPublish: TfrmPublish
         object btnSftpDownload: TButton
           Left = 10
           Top = 10
-          Width = 120
+          Width = 133
           Height = 30
           Caption = 'Descargar archivo'
           TabOrder = 0
           OnClick = btnSftpDownloadClick
         end
         object btnSftpUpload: TButton
-          Left = 140
+          Left = 156
           Top = 10
           Width = 120
           Height = 30
@@ -889,7 +889,7 @@ object frmPublish: TfrmPublish
           OnClick = btnSftpUploadClick
         end
         object btnSftpDelete: TButton
-          Left = 270
+          Left = 290
           Top = 10
           Width = 120
           Height = 30
