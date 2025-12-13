@@ -1,0 +1,44 @@
+<delphi_coding_guidelines>
+  <global_variables>
+    <rule>Evitar el uso de variables globales</rule>
+    <alternatives>
+      - Usar parámetros en funciones y procedimientos
+      - Implementar encapsulamiento mediante clases
+      - Utilizar métodos y propiedades locales
+    </alternatives>
+  </global_variables>
+
+  <code_formatting>
+    <line_length>
+      <max_characters>80</max_characters>
+      <rationale>Mejora la legibilidad del código</rationale>
+      <recommendation>
+        - Dividir líneas largas
+        - Usar continuación de línea (\)
+        - Indentar correctamente las líneas partidas
+      </recommendation>
+    </line_length>
+  </code_formatting>
+
+  <interface_usage>
+    <principle>Priorizar el uso de interfaces</principle>
+    <benefits>
+      - Facilita la abstracción
+      - Mejora la modularidad
+      - Permite polimorfismo
+    </benefits>
+    <example>
+      type
+        IMyInterface = interface
+          procedure DoSomething;
+          function GetValue: Integer;
+        end;
+    </example>
+  </interface_usage>
+
+  <additional_recommendations>
+    - Usar tipos de datos explícitos
+    - Nombrar variables y métodos de forma descriptiva
+    - Comentar código complejo
+  </additional_recommendations>
+</delphi_coding_guidelines>
