@@ -1,13 +1,15 @@
 #!/bin/bash
 
 # Directorio base donde están tus proyectos
-BASE_DIR="/mnt/c/DISCO DURO/proyectos"
+BASE_DIR="/mnt/c/DISCO_DURO/proyectos"
 
-# Rutas de tus tres proyectos
+# Rutas de tus proyectos
 PROJECTS=(
     "Publicador"
+    "dbcomparer"
     "subocasoft"
     "Factuzam"
+    "OdaVeriFactu"
 )
 
 echo "Actualizando proyectos en $BASE_DIR..."
@@ -53,8 +55,10 @@ for project in "${PROJECTS[@]}"; do
     update_project "$project"
 done
 
-echo "¡Actualización de los 3 proyectos completada!"
+echo "¡Actualización de los proyectos completada!"
 echo "Proyectos actualizados:"
 echo "  - Publicador"
 echo "  - Subocasoft" 
 echo "  - Factuzam"
+echo "  - OdaVeriFactu"
+echo "  - dbComparer"
