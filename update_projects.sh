@@ -5,9 +5,9 @@ BASE_DIR="/mnt/c/DISCO DURO/proyectos"
 
 # Rutas de tus tres proyectos
 PROJECTS=(
-    "publicador/Publicador"
-    "subocasoft/subocasoft"
-    "factuzam/Factuzam"
+    "Publicador"
+    "subocasoft"
+    "Factuzam"
 )
 
 echo "Actualizando proyectos en $BASE_DIR..."
