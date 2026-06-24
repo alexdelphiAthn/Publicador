@@ -458,6 +458,21 @@ object frmPublish: TfrmPublish
           TabOrder = 6
           OnClick = btnGetDateClick
         end
+        object btnLeerVersionFactuzam: TButton
+          Left = 472
+          Top = 25
+          Width = 80
+          Height = 25
+          Caption = 'Leer'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 16
+          OnClick = btnLeerVersionFactuzamClick
+        end
         object chkVersionarVariable: TCheckBox
           Left = 678
           Top = 88
@@ -715,6 +730,94 @@ object frmPublish: TfrmPublish
         Height = 17
         Caption = 'Enviar tambi'#233'n c'#243'digo fuente'
         TabOrder = 15
+      end
+    end
+    object tsNsis: TTabSheet
+      Caption = 'NSIS'
+      ImageIndex = 5
+      object lblNsisScriptsPath: TLabel
+        Left = 24
+        Top = 24
+        Width = 142
+        Height = 21
+        Caption = 'Carpeta scripts NSIS'
+      end
+      object lblNsisScriptPath: TLabel
+        Left = 24
+        Top = 88
+        Width = 72
+        Height = 21
+        Caption = 'Script .nsi'
+      end
+      object lblMakensisPath: TLabel
+        Left = 24
+        Top = 152
+        Width = 91
+        Height = 21
+        Caption = 'makensis.exe'
+      end
+      object edtNsisScriptsPath: TEdit
+        Left = 24
+        Top = 48
+        Width = 760
+        Height = 29
+        TabOrder = 0
+      end
+      object edtNsisScriptPath: TEdit
+        Left = 24
+        Top = 112
+        Width = 760
+        Height = 29
+        TabOrder = 1
+      end
+      object edtMakensisPath: TEdit
+        Left = 24
+        Top = 176
+        Width = 760
+        Height = 29
+        TabOrder = 2
+      end
+      object btnSelectNsisScriptsPath: TButton
+        Left = 800
+        Top = 48
+        Width = 99
+        Height = 25
+        Caption = 'Seleccionar'
+        TabOrder = 3
+        OnClick = btnSelectNsisScriptsPathClick
+      end
+      object btnSelectNsisScriptPath: TButton
+        Left = 800
+        Top = 112
+        Width = 99
+        Height = 25
+        Caption = 'Seleccionar'
+        TabOrder = 4
+        OnClick = btnSelectNsisScriptPathClick
+      end
+      object btnSelectMakensisPath: TButton
+        Left = 800
+        Top = 176
+        Width = 99
+        Height = 25
+        Caption = 'Seleccionar'
+        TabOrder = 5
+        OnClick = btnSelectMakensisPathClick
+      end
+      object btnCompilarNsis: TButton
+        Left = 24
+        Top = 232
+        Width = 875
+        Height = 32
+        Caption = 'Compilar NSIS con la versi'#243'n actual'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'Tahoma'
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 6
+        OnClick = btnCompilarNsisClick
       end
     end
     object tsPerfiles: TTabSheet

@@ -159,6 +159,18 @@ type
     chkEnviarCodF: TCheckBox;
     sFtpClientBrowse: TclSFtp;
     btnGrabar: TButton;
+    tsNsis: TTabSheet;
+    lblNsisScriptsPath: TLabel;
+    lblNsisScriptPath: TLabel;
+    lblMakensisPath: TLabel;
+    edtNsisScriptsPath: TEdit;
+    edtNsisScriptPath: TEdit;
+    edtMakensisPath: TEdit;
+    btnSelectNsisScriptsPath: TButton;
+    btnSelectNsisScriptPath: TButton;
+    btnSelectMakensisPath: TButton;
+    btnCompilarNsis: TButton;
+    btnLeerVersionFactuzam: TButton;
     procedure btnBorrarPerfilClick(Sender: TObject);
     procedure btnNuevoPerfilClick(Sender: TObject);
     procedure btnCheckClick(Sender: TObject);
@@ -201,6 +213,11 @@ type
     procedure lstRemoteFilesDblClick(Sender: TObject);
     procedure btnGrabarClick(Sender: TObject);
     procedure btnComprimirExeClick(Sender: TObject);
+    procedure btnLeerVersionFactuzamClick(Sender: TObject);
+    procedure btnSelectNsisScriptsPathClick(Sender: TObject);
+    procedure btnSelectNsisScriptPathClick(Sender: TObject);
+    procedure btnSelectMakensisPathClick(Sender: TObject);
+    procedure btnCompilarNsisClick(Sender: TObject);
   private
     FTextoLineaSeleccionada:string;
 //    FLineaSeleccionada:Integer;
@@ -209,6 +226,7 @@ type
     sOrigen, sDestino, sPassword, sServer, sServerPort, sExeDestPath,
     sAnalisisID, sFolderDest, sUserFtp, sPassFtp, sVersion, sProjFile,
     sGlobFile:string;
+    sNsisScriptsPath, sNsisScriptPath, sMakensisPath:string;
     sVirusTotalAPI : string;
     aFiles:TStringList;
     // C:\Program Files (x86)\Embarcadero\Studio\20.0
@@ -236,9 +254,13 @@ type
     procedure esCadINI (clave, cadena, valor : string);
     function UpdateVersionInFile(const FileName,
                                  NewVersion: string): Boolean;
+    function ObtenerVersionDesdeFichero(const FileName: string;
+                                        out Version: string): Boolean;
     function CompileProject: Boolean;
     //function ExecuteCommand2(const CommandLine, DirIni: string): Boolean;
     function ExecuteCommand3(const CommandLine, DirIni: string): Boolean;
+    function ResolverMakensis: string;
+    function CompilarNsis(const RutaNsis: string): Boolean;
     function SendToVirusTotal(FilePath: string): Boolean;
     function GetAnalysisResult(const AnalysisID: string): string;
     procedure EnviarVirusTotal;
@@ -295,16 +317,6 @@ var
   FileList: TStringList;
   i: Integer;
 begin
-<<<<<<< HEAD
-  if not sFtpClient.Active then
-  begin
-    try
-      sFtpClient.Server := edtServer.Text;
-      sFtpClient.Port := StrToIntDef(edtPuerto.Text, 22);
-      sFtpClient.UserName := edtUsuario.Text;
-      sFtpClient.Password := edtPassFtp.Text;
-      sFtpClient.Open;
-=======
   if not sFtpClientBrowse.Active then
   begin
     try
@@ -313,7 +325,6 @@ begin
       sFtpClientBrowse.UserName := edtUsuario.Text;
       sFtpClientBrowse.Password := edtPassFtp.Text;
       sFtpClientBrowse.Open;
->>>>>>> c0fdadd6ba807aebf29a3cced8bb5cec1149adb1
       LogMessage('Conectado al servidor SFTP');
     except
       on E: Exception do
@@ -324,11 +335,7 @@ begin
     end;
   end;
   try
-<<<<<<< HEAD
-    sFtpClient.ChangeCurrentDir(RemotePath);
-=======
     sFtpClientBrowse.ChangeCurrentDir(RemotePath);
->>>>>>> c0fdadd6ba807aebf29a3cced8bb5cec1149adb1
     FCurrentRemotePath := RemotePath;
     FileList := TStringList.Create;
     try
@@ -336,11 +343,7 @@ begin
       lstRemoteFiles.Clear;
       // CORRECCIÓN: Usar GetList en lugar de List
       // GetList(AList: TStrings; const AFilePath: string = ''; ADetails: Boolean = True);
-<<<<<<< HEAD
-      sFtpClient.GetList(FileList, '', True);  // '' = directorio actual, True = con detalles
-=======
       sFtpClientBrowse.GetList(FileList, '', True);  // '' = directorio actual, True = con detalles
->>>>>>> c0fdadd6ba807aebf29a3cced8bb5cec1149adb1
       LogMessage('Contenido de: ' + FCurrentRemotePath);
       LogMessage(StringOfChar('=', 60));
       for i := 0 to FileList.Count - 1 do
@@ -448,11 +451,7 @@ begin
   begin
     try
       LogMessage('Eliminando: ' + FileName);
-<<<<<<< HEAD
-      sFtpClient.Delete(FileName);  // CORRECCIÓN: Delete en lugar de DeleteFile
-=======
       sFtpClientBrowse.Delete(FileName);  // CORRECCIÓN: Delete en lugar de DeleteFile
->>>>>>> c0fdadd6ba807aebf29a3cced8bb5cec1149adb1
       LogMessage('Archivo eliminado exitosamente');
       // Refrescar la lista
       ListRemoteFiles(FCurrentRemotePath);
@@ -469,15 +468,9 @@ begin
     LogMessage('=== CAMBIO DE DIRECTORIO ===');
     LogMessage('Ruta solicitada: "' + NewPath + '"');
     LogMessage('Ruta actual antes: "' + FCurrentRemotePath + '"');
-<<<<<<< HEAD
-    sFtpClient.ChangeCurrentDir(NewPath);
-    // IMPORTANTE: Actualizar con lo que reporta el servidor
-    FCurrentRemotePath := sFtpClient.CurrentDir;
-=======
     sFtpClientBrowse.ChangeCurrentDir(NewPath);
     // IMPORTANTE: Actualizar con lo que reporta el servidor
     FCurrentRemotePath := sFtpClientBrowse.CurrentDir;
->>>>>>> c0fdadd6ba807aebf29a3cced8bb5cec1149adb1
     LogMessage('Ruta actual después (según servidor): "' + FCurrentRemotePath + '"');
     LogMessage('============================');
     ListRemoteFiles(FCurrentRemotePath);
@@ -540,11 +533,7 @@ var
   ParentPath: string;
   PosSlash: Integer;
 begin
-<<<<<<< HEAD
-  if not sFtpClient.Active then
-=======
   if not sFtpClientBrowse.Active then
->>>>>>> c0fdadd6ba807aebf29a3cced8bb5cec1149adb1
   begin
     LogMessage('No está conectado al servidor');
     Exit;
@@ -1810,6 +1799,14 @@ begin
   end;
 end;
 
+procedure TfrmPublish.btnLeerVersionFactuzamClick(Sender: TObject);
+var
+  Version: string;
+begin
+  if ObtenerVersionDesdeFichero(edtLibVarGlobPath.Text, Version) then
+    edtVersion.Text := Version;
+end;
+
 procedure TfrmPublish.btnGrabarClick(Sender: TObject);
 begin
   grabarIni;
@@ -1828,6 +1825,32 @@ begin
   dlgSelectFolder.DefaultFolder := edtExeDestPath.Text;
   if dlgSelectFolder.Execute then
     edtExeDestPath.Text := dlgSelectFolder.FileName;
+end;
+
+procedure TfrmPublish.btnSelectMakensisPathClick(Sender: TObject);
+begin
+  dlgOpenPoject.Filter := 'makensis.exe|makensis.exe|Ejecutables (*.exe)|*.exe';
+  if dlgOpenPoject.Execute() then
+    edtMakensisPath.Text := dlgOpenPoject.FileName;
+end;
+
+procedure TfrmPublish.btnSelectNsisScriptPathClick(Sender: TObject);
+begin
+  dlgOpenPoject.Filter := 'Scripts NSIS (*.nsi)|*.nsi';
+  dlgOpenPoject.InitialDir := edtNsisScriptsPath.Text;
+  if dlgOpenPoject.Execute() then
+  begin
+    edtNsisScriptPath.Text := dlgOpenPoject.FileName;
+    if edtNsisScriptsPath.Text = '' then
+      edtNsisScriptsPath.Text := ExtractFilePath(dlgOpenPoject.FileName);
+  end;
+end;
+
+procedure TfrmPublish.btnSelectNsisScriptsPathClick(Sender: TObject);
+begin
+  dlgSelectFolder.DefaultFolder := edtNsisScriptsPath.Text;
+  if dlgSelectFolder.Execute then
+    edtNsisScriptsPath.Text := dlgSelectFolder.FileName;
 end;
 
 procedure TfrmPublish.btnSelectLibVarGlobClick(Sender: TObject);
@@ -1874,6 +1897,12 @@ end;
 procedure TfrmPublish.btnVirusTotalClick(Sender: TObject);
 begin
   EnviarVirusTotal;
+end;
+
+procedure TfrmPublish.btnCompilarNsisClick(Sender: TObject);
+begin
+  grabarIni;
+  CompilarNsis(edtNsisScriptPath.Text);
 end;
 
 procedure TfrmPublish.MakeDll;
@@ -2229,6 +2258,12 @@ begin
   sVersion     := leCadIni('Compilation', 'Version', '109');
   sProjFile    := leCadINI('Compilation', 'ProjectFile', 'c:\MyProject');
   sGlobFile    := leCadINI('Compilation', 'LibGlobFile', '');
+  sNsisScriptsPath := leCadIni('Nsis', 'ScriptsPath',
+                               'C:\DISCO_DURO\proyectos\Factuzam\empaquetador');
+  sNsisScriptPath := leCadIni('Nsis', 'ScriptPath',
+                              'C:\DISCO_DURO\proyectos\Factuzam\' +
+                              'empaquetador\factuzam_demo_autoinstalable.nsi');
+  sMakensisPath := leCadIni('Nsis', 'MakensisPath', '');
   sVirusTotalAPI := leCadINI('Other', 'VirusTotalAPI', '000000000000000000');
    //Leer extensiones del INI (guardadas como string separado por comas)
   extensiones := leCadIni('Files', 'Extensions', '*.exe,*.dll,*.txt');
@@ -2346,6 +2381,9 @@ begin
   edtParamAdd.Text := sAdditionalParams;
   edtExeDestPath.Text := sExeDestPath;
   edtAnalisisID.Text := sAnalisisID;
+  edtNsisScriptsPath.Text := sNsisScriptsPath;
+  edtNsisScriptPath.Text := sNsisScriptPath;
+  edtMakensisPath.Text := sMakensisPath;
 end;
 
 procedure TfrmPublish.InitProfile;
@@ -2424,6 +2462,9 @@ begin
   sBuildConfiguration := edtConfig.Text;
   sOutputDirectory := edtOutputExe.Text;
   sAdditionalParams := edtParamAdd.Text;
+  sNsisScriptsPath := edtNsisScriptsPath.Text;
+  sNsisScriptPath := edtNsisScriptPath.Text;
+  sMakensisPath := edtMakensisPath.Text;
   // Convertir lista de extensiones a string separado por comas
   extensiones := '';
   for i := 0 to lstExtensiones.Items.Count - 1 do
@@ -2455,6 +2496,9 @@ begin
   esCadIni('Compiler', 'BuildConfiguration',  sBuildConfiguration);
   esCadIni('Compiler', 'OutputDirectory',     sOutputDirectory);
   esCadIni('Compiler', 'AdditionalParams',    sAdditionalParams);
+  esCadIni('Nsis', 'ScriptsPath', sNsisScriptsPath);
+  esCadIni('Nsis', 'ScriptPath', sNsisScriptPath);
+  esCadIni('Nsis', 'MakensisPath', sMakensisPath);
 
   sExeDestPath := edtExeDestPath.Text;
   sAnalisisID := edtAnalisisID.Text;
@@ -2485,6 +2529,8 @@ var
   i: Integer;
   Line: string;
   Found: Boolean;
+  RegEx: TRegEx;
+  Match: TMatch;
 begin
   Result := False;
   Found := False;
@@ -2494,15 +2540,19 @@ begin
   try
     // Leer archivo
     FileContent.LoadFromFile(FileName);
+    RegEx := TRegEx.Create('^(\s*)(Fversion|oVersion)(\s*:=\s*)''[^'']*''(\s*;.*)$',
+                           [roIgnoreCase]);
     // Buscar y reemplazar la línea de versión
     for i := 0 to FileContent.Count - 1 do
     begin
-      Line := Trim(FileContent[i]);
-      // Buscar línea que contenga "Fversion :="
-      if (Pos('Fversion', Line) > 0) and (Pos(':=', Line) > 0) then
+      Line := FileContent[i];
+      Match := RegEx.Match(Line);
+      if Match.Success then
       begin
         // Reemplazar con nueva versión
-        FileContent[i] := '  Fversion := ''' + NewVersion + ''';';
+        FileContent[i] := Match.Groups[1].Value + Match.Groups[2].Value +
+                          Match.Groups[3].Value + '''' + NewVersion + '''' +
+                          Match.Groups[4].Value;
         Found := True;
         LogMessage('Línea original: ' + Line);
         LogMessage('Nueva línea: ' + FileContent[i]);
@@ -2516,11 +2566,115 @@ begin
     end
     else
     begin
-      LogMessage('ERROR: No se encontró la variable Fversion en el archivo');
+      LogMessage('ERROR: No se encontró Fversion/oVersion en el archivo');
     end;
   finally
     FileContent.Free;
   end;
+end;
+
+function TfrmPublish.ObtenerVersionDesdeFichero(const FileName: string;
+                                                out Version: string): Boolean;
+var
+  FileContent: TStringList;
+  i: Integer;
+  RegEx: TRegEx;
+  Match: TMatch;
+begin
+  Result := False;
+  Version := '';
+  if not FileExists(FileName) then
+  begin
+    LogMessage('ERROR: No existe el fichero de versión: ' + FileName);
+    Exit;
+  end;
+  FileContent := TStringList.Create;
+  try
+    FileContent.LoadFromFile(FileName);
+    RegEx := TRegEx.Create('\b(?:Fversion|oVersion)\s*:=\s*''([^'']+)''',
+                           [roIgnoreCase]);
+    for i := 0 to FileContent.Count - 1 do
+    begin
+      Match := RegEx.Match(FileContent[i]);
+      if Match.Success then
+      begin
+        Version := Match.Groups[1].Value;
+        Result := True;
+        LogMessage('Versión detectada: ' + Version);
+        Break;
+      end;
+    end;
+    if not Result then
+      LogMessage('ERROR: No se encontró Fversion/oVersion en el archivo');
+  finally
+    FileContent.Free;
+  end;
+end;
+
+function TfrmPublish.ResolverMakensis: string;
+var
+  Candidato: string;
+begin
+  Result := Trim(edtMakensisPath.Text);
+  if (Result <> '') and FileExists(Result) then
+    Exit;
+  if Result <> '' then
+    LogMessage('No existe makensis.exe en: ' + Result);
+  Candidato := 'C:\Program Files (x86)\NSIS\makensis.exe';
+  if FileExists(Candidato) then
+  begin
+    Result := Candidato;
+    Exit;
+  end;
+  Candidato := 'C:\Program Files\NSIS\makensis.exe';
+  if FileExists(Candidato) then
+  begin
+    Result := Candidato;
+    Exit;
+  end;
+  Result := 'makensis.exe';
+end;
+
+function TfrmPublish.CompilarNsis(const RutaNsis: string): Boolean;
+var
+  RutaReal: string;
+  DirectorioNsis: string;
+  Makensis: string;
+  Version: string;
+  Command: string;
+begin
+  Result := False;
+  RutaReal := Trim(RutaNsis);
+  if RutaReal = '' then
+  begin
+    LogMessage('ERROR: indique un script NSIS');
+    Exit;
+  end;
+  if not TPath.IsPathRooted(RutaReal) then
+    RutaReal := TPath.Combine(edtNsisScriptsPath.Text, RutaReal);
+  RutaReal := TPath.GetFullPath(RutaReal);
+  if not FileExists(RutaReal) then
+  begin
+    LogMessage('ERROR: no existe el script NSIS: ' + RutaReal);
+    Exit;
+  end;
+  Version := Trim(edtVersion.Text);
+  if Version = '' then
+    if not ObtenerVersionDesdeFichero(edtLibVarGlobPath.Text, Version) then
+      Exit;
+  edtVersion.Text := Version;
+  Makensis := ResolverMakensis;
+  DirectorioNsis := ExtractFilePath(RutaReal);
+  Command := '"' + Makensis + '" "/DVERSION=' + Version + '" "' +
+             RutaReal + '"';
+  LogMessage('=== COMPILANDO NSIS ===');
+  LogMessage('Script NSIS: ' + RutaReal);
+  LogMessage('Versión: ' + Version);
+  Result := ExecuteCommand3(Command, DirectorioNsis);
+  if Result then
+    LogMessage('Compilación NSIS finalizada correctamente')
+  else
+    LogMessage('ERROR: Fallo al compilar NSIS');
 end;
 
 function TfrmPublish.GetDelphiRegistryPaths: string;
@@ -2727,8 +2881,6 @@ begin
       end);
     end
   ).Run;
-<<<<<<< HEAD
-=======
 end;
 
 procedure TfrmPublish.btnComprimirExeClick(Sender: TObject);
@@ -2774,7 +2926,6 @@ begin
       end);
     end
   ).Run;
->>>>>>> c0fdadd6ba807aebf29a3cced8bb5cec1149adb1
 end;
 
 procedure TfrmPublish.LlamarCompilacion;
@@ -2787,12 +2938,10 @@ begin
     TThread.Synchronize(nil, procedure
     begin
       VersionarVariable := chkVersionarVariable.Checked;
+      NewVersion := edtVersion.Text;
+      sVersion := edtVersion.Text;
+      sGlobFile := edtLibVarGlobPath.Text;
     end);
-<<<<<<< HEAD
-    NewVersion := sVersion; // Usar variable copiada, NO el control
-=======
-    NewVersion := edtVersion.Text;
->>>>>>> c0fdadd6ba807aebf29a3cced8bb5cec1149adb1
     LogMessage('=== INICIANDO COMPILACIÓN ===');
     // Paso 1: Actualizar versión en el archivo
     if not VersionarVariable then
